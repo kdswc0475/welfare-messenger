@@ -32,11 +32,12 @@ export default async function handler(req, res) {
       const { content, author, date, project } = data
       const title = `[${author}] ${(content || '').slice(0, 50)}${(content || '').length > 50 ? '…' : ''}`
 
+      const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
       const r = await createPage({
         parent: { database_id: chatDbId },
         properties: {
           '업무내용': { title:  [{ text: { content: title } }] },
-          '날짜':     { date:   { start: date } },
+          ...(isValidDate ? { '날짜': { date: { start: date } } } : {}),
           '사업명':   { select: { name: project } },
         },
         children: [{
