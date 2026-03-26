@@ -59,7 +59,7 @@ export default function App() {
 
   const genId = useCallback(() => { setNextId(n => n + 1); return nextId }, [nextId])
 
-  const sendMessage = useCallback((text) => {
+  const sendMessage = useCallback((text, file = null) => {
     const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 
     // 로그인한 Google 계정 정보 사용
@@ -76,6 +76,7 @@ export default function App() {
       time: now,
       type: 'text',
       text,
+      file: file || null,
     }
     setMessages(prev => [...prev, newMsg])
 

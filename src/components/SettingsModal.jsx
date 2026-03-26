@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
 import './SettingsModal.css'
 
 const PAGES = ['일반', '멤버 관리', 'AI 비서', '알림', '보안', '연동', '레이아웃']
@@ -41,27 +42,39 @@ function GeneralPage({ workspaceName, setWorkspaceName }) {
 }
 
 function MembersPage() {
-  const members = [
-    { name: '김팀장', email: 'kim@welfare.kr', role: '관리자', color: 'green' },
-    { name: '이복지', email: 'lee@welfare.kr', role: '멤버',   color: 'blue'  },
-    { name: '박사복', email: 'park@welfare.kr', role: '멤버',  color: 'coral' },
-  ]
+  const { user } = useAuth()
   return (
     <div>
       <div className="settings-title">멤버 관리</div>
-      {members.map(m => (
-        <div className="member-row" key={m.name}>
-          <div className={`avatar av-${m.color}`} style={{ width: 30, height: 30, fontSize: 12 }}>{m.name[0]}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        현재 로그인된 멤버
+      </div>
+      {user && (
+        <div className="member-row">
+          {user.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={user.displayName}
+              referrerPolicy="no-referrer"
+              style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div className="avatar av-blue" style={{ width: 30, height: 30, fontSize: 12 }}>
+              {user.displayName?.charAt(0)}
+            </div>
+          )}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{m.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.email}</div>
+            <div style={{ fontSize: 13 }}>{user.displayName}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user.email}</div>
           </div>
-          <select className="role-select" defaultValue={m.role}>
+          <select className="role-select" defaultValue="관리자">
             <option>관리자</option><option>멤버</option><option>게스트</option>
           </select>
         </div>
-      ))}
-      <button className="save-btn" style={{ marginTop: 16 }}>저장</button>
+      )}
+      <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-muted)' }}>
+        💡 팀원이 같은 URL로 접속하면 자동으로 멤버가 됩니다.
+      </div>
     </div>
   )
 }
