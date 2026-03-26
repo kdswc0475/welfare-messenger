@@ -421,3 +421,17 @@
 .file-icon { font-size: 22px; }
 .file-info { display: flex; flex-direction: column; gap: 2px; }
 .file-size { font-size: 11px; color: var(--text-muted); }
+
+/* 컨텍스트 메뉴 — 노션 아이콘 */
+.ctx-icon-notion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}

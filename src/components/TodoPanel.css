@@ -195,6 +195,19 @@
 }
 .todo-action-btn:hover { background: var(--border); }
 .todo-action-btn.delete:hover { background: #fde8e8; }
+.todo-action-btn.notion {
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0;
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-action-btn.notion:hover { background: #444; }
 .form-row { display: flex; gap: 8px; }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .btn-primary {

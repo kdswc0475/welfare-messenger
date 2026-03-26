@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { AI_MENTIONS } from '../aiMentions.js'
+import NotionModal from './NotionModal.jsx'
 import './ChatMain.css'
 
 // @멘션 텍스트를 하이라이트 칩으로 렌더링
@@ -110,10 +111,11 @@ function Message({ msg, onContextMenu }) {
 
 // 우클릭 컨텍스트 메뉴
 const CTX_ITEMS = [
-  { id: 'copy',   label: '복사',   icon: '📋' },
-  { id: 'reply',  label: '답장',   icon: '↩' },
-  { id: 'notice', label: '공지',   icon: '📢' },
-  { id: 'delete', label: '삭제',   icon: '🗑', danger: true },
+  { id: 'copy',   label: '복사',        icon: '📋' },
+  { id: 'reply',  label: '답장',        icon: '↩' },
+  { id: 'notion', label: '노션에 저장', icon: 'N', notion: true },
+  { id: 'notice', label: '공지',        icon: '📢' },
+  { id: 'delete', label: '삭제',        icon: '🗑', danger: true },
 ]
 
 function ContextMenu({ menu, currentUser, onAction }) {
@@ -144,7 +146,7 @@ function ContextMenu({ menu, currentUser, onAction }) {
           className={`ctx-item${item.danger ? ' danger' : ''}`}
           onClick={() => onAction(item.id, msg)}
         >
-          <span className="ctx-icon">{item.icon}</span>
+          <span className={`ctx-icon${item.notion ? ' ctx-icon-notion' : ''}`}>{item.icon}</span>
           <span>{item.label}</span>
         </div>
       ))}
@@ -179,6 +181,7 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
   const [replyTo, setReplyTo]         = useState(null)
   const [popup, setPopup]             = useState({ show: false, filtered: [], atIdx: -1, query: '', activeIdx: 0 })
   const [ctxMenu, setCtxMenu]         = useState({ show: false, x: 0, y: 0, msg: null })
+  const [notionMsg, setNotionMsg]     = useState(null)
 
   const bottomRef   = useRef(null)
   const fileInputRef = useRef(null)
@@ -219,12 +222,33 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
       case 'notice':
         onMarkNotice?.(msg.id)
         break
+      case 'notion':
+        setNotionMsg(msg)
+        break
       case 'delete':
         if (window.confirm('이 메시지를 삭제할까요?')) onDeleteMessage?.(msg.id)
         break
       default: break
     }
   }, [onMarkNotice, onDeleteMessage])
+
+  const saveToNotion = useCallback(async (project) => {
+    const res = await fetch('/api/notion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveChat',
+        data: {
+          content:  notionMsg?.text || '',
+          author:   notionMsg?.author || '',
+          date:     new Date().toISOString().split('T')[0],
+          project,
+        },
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || '저장 실패')
+  }, [notionMsg])
 
   // ── @멘션 팝업 ────────────────────────────────────────────
   const handleInputChange = (e) => {
@@ -304,6 +328,15 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
         currentUser={currentUser}
         onAction={handleCtxAction}
       />
+
+      {/* 노션 저장 모달 */}
+      {notionMsg && (
+        <NotionModal
+          preview={`${notionMsg.author}: ${(notionMsg.text || '').slice(0, 60)}${(notionMsg.text || '').length > 60 ? '…' : ''}`}
+          onClose={() => setNotionMsg(null)}
+          onSave={saveToNotion}
+        />
+      )}
 
       {/* Top tabs */}
       <div className="top-tabs">

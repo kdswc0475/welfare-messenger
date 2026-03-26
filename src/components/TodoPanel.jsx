@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { collection, onSnapshot, query } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import NotionModal from './NotionModal.jsx'
 import './TodoPanel.css'
 
 // ── 업무 등록/수정 모달 ────────────────────────────────────
@@ -108,7 +109,7 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
 }
 
 // ── To Do 항목 ────────────────────────────────────────────
-function TodoItem({ item, onToggle, onEdit, onDelete }) {
+function TodoItem({ item, onToggle, onEdit, onDelete, onNotion }) {
   const [hover, setHover] = useState(false)
 
   return (
@@ -131,8 +132,13 @@ function TodoItem({ item, onToggle, onEdit, onDelete }) {
         {!item.urgent && <span className="tag">{item.type === 'directive' ? '지시' : '개인'}</span>}
       </div>
 
-      {/* 호버 시 수정/삭제 버튼 */}
+      {/* 호버 시 노션/수정/삭제 버튼 */}
       <div className={`todo-actions ${hover ? 'visible' : ''}`}>
+        <button
+          className="todo-action-btn notion"
+          title="노션에 저장"
+          onClick={e => { e.stopPropagation(); onNotion(item) }}
+        >N</button>
         <button
           className="todo-action-btn edit"
           title="수정"
@@ -150,17 +156,36 @@ function TodoItem({ item, onToggle, onEdit, onDelete }) {
 
 // ── 메인 패널 ─────────────────────────────────────────────
 export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, deleteTodo, userDisplayName }) {
-  const [collapsed, setCollapsed]   = useState(false)
-  const [filter, setFilter]         = useState('all')
-  const [modalOpen, setModalOpen]   = useState(false)
-  const [modalType, setModalType]   = useState('directive')
+  const [collapsed, setCollapsed]     = useState(false)
+  const [filter, setFilter]           = useState('all')
+  const [modalOpen, setModalOpen]     = useState(false)
+  const [modalType, setModalType]     = useState('directive')
   const [editingItem, setEditingItem] = useState(null)
+  const [notionItem, setNotionItem]   = useState(null)
 
   const openAdd  = (type = 'directive') => { setEditingItem(null); setModalType(type); setModalOpen(true) }
   const openEdit = (item)               => { setEditingItem(item); setModalType(item.type); setModalOpen(true) }
   const handleDelete = (id) => {
     if (window.confirm('이 업무를 삭제할까요?')) deleteTodo(id)
   }
+
+  const saveToNotion = useCallback(async (project) => {
+    const res = await fetch('/api/notion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveTodo',
+        data: {
+          text:     notionItem?.text     || '',
+          assignee: notionItem?.assignee || '',
+          due:      notionItem?.due      || null,
+          project,
+        },
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || '저장 실패')
+  }, [notionItem])
 
   const filtered = useMemo(() => {
     switch (filter) {
@@ -183,6 +208,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
       onToggle={toggleTodo}
       onEdit={openEdit}
       onDelete={handleDelete}
+      onNotion={setNotionItem}
     />
   )
 
@@ -249,6 +275,14 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onAdd={addTodo}
           onEdit={editTodo}
+        />
+      )}
+
+      {notionItem && (
+        <NotionModal
+          preview={`${notionItem.assignee ? notionItem.assignee + ': ' : ''}${notionItem.text}`}
+          onClose={() => setNotionItem(null)}
+          onSave={saveToNotion}
         />
       )}
     </>
