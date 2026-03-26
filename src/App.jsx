@@ -70,6 +70,29 @@ export default function App() {
   const [todos, setTodos]                 = useState(INITIAL_TODOS)
   const [aiModel, setAiModel]             = useState('Llama 3.3 (무료)')
   const [settingsOpen, setSettingsOpen]   = useState(false)
+  const [unread, setUnread]               = useState(0)
+
+  // ── 알림 권한 요청 ────────────────────────────────────────
+  const notifAllowed = useRef(false)
+  useEffect(() => {
+    if (!user || !('Notification' in window)) return
+    if (Notification.permission === 'granted') { notifAllowed.current = true; return }
+    if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { notifAllowed.current = p === 'granted' })
+    }
+  }, [user])
+
+  // ── 탭 포커스 시 읽지 않은 수 초기화 ─────────────────────
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) setUnread(0) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
+  // ── 읽지 않은 수 → 탭 제목에 표시 ───────────────────────
+  useEffect(() => {
+    document.title = unread > 0 ? `(${unread}) 복지 메신저` : '복지 메신저'
+  }, [unread])
 
   // ── 패널 너비 (localStorage 유지) ────────────────────────
   const [sidebarW, setSidebarW] = useState(() => parseInt(localStorage.getItem('sidebarW') || '200', 10))
@@ -103,12 +126,42 @@ export default function App() {
     document.addEventListener('mouseup',   onUp)
   }, [sidebarW, todoW])
 
-  // ── Firestore 실시간 메시지 구독 ──────────────────────────
+  // ── Firestore 실시간 메시지 구독 + 알림 ──────────────────
+  const prevMsgCount  = useRef(0)
+  const isInitialLoad = useRef(true)
+
   useEffect(() => {
     if (!user) return
+    isInitialLoad.current = true
     const q = query(collection(db, 'messages'), orderBy('createdAt', 'asc'), limit(100))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+
+      // 초기 로드가 아닌 경우에만 알림 처리
+      if (!isInitialLoad.current) {
+        const newMsgs = msgs.slice(prevMsgCount.current)
+        newMsgs.forEach(msg => {
+          // 본인 메시지·AI 메시지는 알림 제외
+          if (msg.uid === user.uid || msg.type === 'ai') return
+
+          // 탭이 숨겨진 경우 unread 증가
+          if (document.hidden) setUnread(n => n + 1)
+
+          // OS 알림 표시
+          if (notifAllowed.current) {
+            const notif = new Notification(msg.author || '복지 메신저', {
+              body: msg.text?.slice(0, 80) || (msg.fileName ? `📎 ${msg.fileName}` : '새 메시지'),
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
+              tag: msg.id,
+            })
+            notif.onclick = () => { window.focus(); notif.close() }
+          }
+        })
+      }
+
+      isInitialLoad.current  = false
+      prevMsgCount.current   = msgs.length
       setMessages(msgs)
     })
     return unsubscribe
