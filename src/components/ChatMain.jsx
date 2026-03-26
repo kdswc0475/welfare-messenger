@@ -19,12 +19,16 @@ function Avatar({ msg, size = 32 }) {
   )
 }
 
-function FileAttachment({ file }) {
-  if (file.type.startsWith('image/')) {
+function FileAttachment({ msg }) {
+  if (!msg.fileURL && !msg.fileName) return null
+  const isImage = msg.fileType?.startsWith('image/')
+  if (isImage) {
     return (
       <div className="file-attachment">
-        <img src={file.dataUrl} alt={file.name} className="attach-image" />
-        <div className="attach-name">🖼 {file.name}</div>
+        <a href={msg.fileURL} target="_blank" rel="noreferrer">
+          <img src={msg.fileURL} alt={msg.fileName} className="attach-image" />
+        </a>
+        <div className="attach-name">🖼 {msg.fileName}</div>
       </div>
     )
   }
@@ -32,8 +36,8 @@ function FileAttachment({ file }) {
     <div className="file-attachment file-doc">
       <span className="file-icon">📄</span>
       <div className="file-info">
-        <div className="attach-name">{file.name}</div>
-        <div className="file-size">{(file.size / 1024).toFixed(1)} KB</div>
+        <a href={msg.fileURL} target="_blank" rel="noreferrer" className="attach-name">{msg.fileName}</a>
+        {msg.fileSize && <div className="file-size">{(msg.fileSize / 1024).toFixed(1)} KB</div>}
       </div>
     </div>
   )
@@ -65,7 +69,7 @@ function Message({ msg }) {
         ) : (
           <>
             {msg.text && <div className="msg-text">{msg.text}</div>}
-            {msg.file && <FileAttachment file={msg.file} />}
+            {msg.fileURL && <FileAttachment msg={msg} />}
           </>
         )}
       </div>

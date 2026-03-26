@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext.jsx'
+import { db } from '../firebase.js'
 import './Sidebar.css'
 
 export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen }) {
@@ -7,9 +9,19 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
   const [draft, setDraft]         = useState(workspaceName)
+  const [members, setMembers]     = useState([])
   const inputRef                  = useRef(null)
 
   useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
+
+  // Firestore 온라인 멤버 실시간 구독
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('online', '==', true))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMembers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })))
+    })
+    return unsubscribe
+  }, [])
 
   const startEdit  = () => { setDraft(workspaceName); setEditing(true) }
   const saveEdit   = () => { if (draft.trim()) setWorkspaceName(draft.trim()); setEditing(false) }
@@ -43,8 +55,9 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
         </button>
       </div>
 
-      {/* Channels */}
+      {/* Body */}
       <div className="sidebar-body">
+        {/* 채널 */}
         <section className="ch-section">
           {!collapsed && <div className="section-label">채널</div>}
           <div className="channel-item active">
@@ -54,44 +67,45 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
           </div>
         </section>
 
-        {/* Members */}
+        {/* 온라인 멤버 */}
         <section className="ch-section">
-          {!collapsed && <div className="section-label">멤버</div>}
-          {user && (
-            <div className="member-row" key={user.uid}>
-              {user.photoURL ? (
+          {!collapsed && (
+            <div className="section-label">
+              온라인 멤버 {members.length > 0 && <span style={{ color: 'var(--success)' }}>· {members.length}명</span>}
+            </div>
+          )}
+          {members.map(m => (
+            <div className="member-row" key={m.uid}>
+              {m.photoURL ? (
                 <img
-                  src={user.photoURL}
-                  alt={user.displayName}
+                  src={m.photoURL}
+                  alt={m.displayName}
                   referrerPolicy="no-referrer"
                   style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                 />
               ) : (
-                <span className="avatar av-blue">{user.displayName?.charAt(0) || '?'}</span>
+                <span className="avatar av-blue">{m.displayName?.charAt(0) || '?'}</span>
               )}
-              {!collapsed && <span className="member-name">{user.displayName} <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(나)</span></span>}
+              {!collapsed && (
+                <span className="member-name">
+                  {m.displayName}
+                  {m.uid === user?.uid && <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>(나)</span>}
+                </span>
+              )}
               {!collapsed && <span className="dot dot-online" />}
             </div>
-          )}
+          ))}
         </section>
       </div>
 
-      {/* Footer — 로그인 유저 + 설정 + 로그아웃 */}
+      {/* Footer */}
       <div className="sidebar-footer">
-        {/* 현재 로그인 유저 */}
         {user && (
           <div className={`user-profile ${collapsed ? 'user-profile-collapsed' : ''}`}>
             {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName}
-                className="user-photo"
-                referrerPolicy="no-referrer"
-              />
+              <img src={user.photoURL} alt={user.displayName} className="user-photo" referrerPolicy="no-referrer" />
             ) : (
-              <span className="avatar av-blue user-photo-fallback">
-                {user.displayName?.charAt(0) || '?'}
-              </span>
+              <span className="avatar av-blue user-photo-fallback">{user.displayName?.charAt(0) || '?'}</span>
             )}
             {!collapsed && (
               <div className="user-info">
@@ -101,14 +115,10 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
             )}
           </div>
         )}
-
-        {/* 설정 버튼 */}
         <button className="settings-btn" onClick={() => setSettingsOpen(true)}>
           <span>⚙</span>
           {!collapsed && <span>관리자 설정</span>}
         </button>
-
-        {/* 로그아웃 버튼 */}
         <button className="logout-btn" onClick={logout} title="로그아웃">
           <span>↩</span>
           {!collapsed && <span>로그아웃</span>}
