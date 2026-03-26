@@ -3,7 +3,6 @@ import {
   collection, addDoc, updateDoc, doc,
   onSnapshot, query, orderBy, limit, serverTimestamp
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import Sidebar from './components/Sidebar.jsx'
 import ChatMain from './components/ChatMain.jsx'
 import TodoPanel from './components/TodoPanel.jsx'
@@ -11,7 +10,7 @@ import MobileLayout from './components/MobileLayout.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import Login from './components/Login.jsx'
 import { useAuth } from './context/AuthContext.jsx'
-import { db, storage } from './firebase.js'
+import { db } from './firebase.js'
 import './App.css'
 
 const INITIAL_TODOS = [
@@ -82,16 +81,17 @@ export default function App() {
     const photoURL    = user?.photoURL || null
 
     let fileData = null
-    // 파일이 있으면 Firebase Storage에 업로드
+    // 파일은 base64로 Firestore에 직접 저장 (500KB 이하)
     if (file) {
-      try {
-        const blob     = await fetch(file.dataUrl).then(r => r.blob())
-        const fileRef  = ref(storage, `attachments/${Date.now()}_${file.name}`)
-        await uploadBytes(fileRef, blob)
-        const fileURL  = await getDownloadURL(fileRef)
-        fileData = { fileURL, fileName: file.name, fileType: file.type, fileSize: file.size }
-      } catch (e) {
-        console.warn('파일 업로드 실패:', e)
+      if (file.size <= 500 * 1024) {
+        fileData = {
+          fileURL:  file.dataUrl,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        }
+      } else {
+        alert('파일 크기는 500KB 이하만 첨부 가능합니다. (Storage 업그레이드 시 제한 해제)')
       }
     }
 
