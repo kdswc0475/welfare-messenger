@@ -8,6 +8,15 @@ export default async function handler(req, res) {
 
   if (!NOTION_API_KEY) return res.status(500).json({ error: 'Notion API 키가 설정되지 않았습니다' })
 
+  // URL 전체가 들어온 경우 ID 부분만 추출
+  const extractId = (val = '') => {
+    const match = val.match(/([a-f0-9]{32})/)
+    return match ? match[1] : val.trim()
+  }
+
+  const chatDbId = extractId(CHAT_DB_ID)
+  const todoDbId = extractId(TODO_DB_ID)
+
   const headers = {
     Authorization:    `Bearer ${NOTION_API_KEY}`,
     'Content-Type':   'application/json',
@@ -24,7 +33,7 @@ export default async function handler(req, res) {
       const title = `[${author}] ${(content || '').slice(0, 50)}${(content || '').length > 50 ? '…' : ''}`
 
       const r = await createPage({
-        parent: { database_id: CHAT_DB_ID },
+        parent: { database_id: chatDbId },
         properties: {
           '업무내용': { title:  [{ text: { content: title } }] },
           '날짜':     { date:   { start: date } },
@@ -46,7 +55,7 @@ export default async function handler(req, res) {
       const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(due)
 
       const r = await createPage({
-        parent: { database_id: TODO_DB_ID },
+        parent: { database_id: todoDbId },
         properties: {
           '업무명':  { title:     [{ text: { content: text || '' } }] },
           '사업명':  { select:    { name: project } },
