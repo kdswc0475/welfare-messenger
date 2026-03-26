@@ -122,7 +122,9 @@ export default function App() {
       })
       callAI(aiModel, text)
         .then(reply  => updateDoc(doc(db, 'messages', aiRef.id), { text: reply }))
-        .catch(err   => updateDoc(doc(db, 'messages', aiRef.id), { text: `❌ 오류: ${err.message}` }))
+        .catch(err   => updateDoc(doc(db, 'messages', aiRef.id), {
+          text: `❌ ${err.message || 'AI 응답 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'}`,
+        }))
     }
   }, [user, aiModel])
 

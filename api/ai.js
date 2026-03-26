@@ -25,7 +25,13 @@ export default async function handler(req, res) {
         }
       )
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'Gemini 오류')
+      if (!response.ok) {
+        const errMsg = data.error?.message || 'Gemini 오류'
+        if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+          throw new Error('Gemini API 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 다른 AI 모델을 선택해 주세요.')
+        }
+        throw new Error(errMsg)
+      }
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '응답을 받지 못했습니다'
       return res.status(200).json({ reply: text })
     }
@@ -52,7 +58,13 @@ export default async function handler(req, res) {
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'OpenAI 오류')
+      if (!response.ok) {
+        const errMsg = data.error?.message || 'OpenAI 오류'
+        if (errMsg.includes('quota') || errMsg.includes('insufficient_quota')) {
+          throw new Error('OpenAI API 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 다른 AI 모델을 선택해 주세요.')
+        }
+        throw new Error(errMsg)
+      }
       const text = data.choices?.[0]?.message?.content || '응답을 받지 못했습니다'
       return res.status(200).json({ reply: text })
     }
@@ -64,7 +76,7 @@ export default async function handler(req, res) {
 
       const claudeModel = model === 'Claude Sonnet'
         ? 'claude-sonnet-4-5'
-        : 'claude-haiku-4-5'
+        : 'claude-haiku-4-5-20251001'
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -80,7 +92,13 @@ export default async function handler(req, res) {
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'Anthropic 오류')
+      if (!response.ok) {
+        const errMsg = data.error?.message || 'Anthropic 오류'
+        if (errMsg.includes('credit') || errMsg.includes('quota') || data.error?.type === 'overloaded_error') {
+          throw new Error('Claude API 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 다른 AI 모델을 선택해 주세요.')
+        }
+        throw new Error(errMsg)
+      }
       const text = data.content?.[0]?.text || '응답을 받지 못했습니다'
       return res.status(200).json({ reply: text })
     }
