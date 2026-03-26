@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import {
-  collection, addDoc, updateDoc, doc,
+  collection, addDoc, updateDoc, deleteDoc, doc,
   onSnapshot, query, orderBy, limit, serverTimestamp
 } from 'firebase/firestore'
 import Sidebar from './components/Sidebar.jsx'
@@ -11,13 +11,14 @@ import SettingsModal from './components/SettingsModal.jsx'
 import Login from './components/Login.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import { db } from './firebase.js'
+import { detectMentionedModel } from './aiMentions.js'
 import './App.css'
 
 const INITIAL_TODOS = [
-  { id: 1, type: 'directive', done: false, text: '긴급복지 신청서 검토 및 제출', assignee: '이복지', due: 'D-1', urgent: true },
-  { id: 2, type: 'directive', done: true,  text: '주간 케이스 회의 안건 작성',   assignee: '박사복', due: '완료',  urgent: false },
-  { id: 3, type: 'personal',  done: false, text: '방문일지 작성 (홍길동)',         assignee: '',       due: '오늘',  urgent: false },
-  { id: 4, type: 'personal',  done: false, text: '상급기관 보고 공문 초안',        assignee: '',       due: '금요일',urgent: false },
+  { id: 1, type: 'directive', done: false, text: '긴급복지 신청서 검토 및 제출', assignee: '', due: 'D-1', urgent: true },
+  { id: 2, type: 'directive', done: true,  text: '주간 케이스 회의 안건 작성',   assignee: '', due: '완료',  urgent: false },
+  { id: 3, type: 'personal',  done: false, text: '방문일지 작성 (홍길동)',         assignee: '', due: '오늘',  urgent: false },
+  { id: 4, type: 'personal',  done: false, text: '상급기관 보고 공문 초안',        assignee: '', due: '금요일',urgent: false },
 ]
 
 function formatTime(ts) {
@@ -34,7 +35,7 @@ async function callAI(model, message) {
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'AI 오류')
-  return data.reply
+  return { reply: data.reply, usedModel: data.usedModel || model }
 }
 
 function LoadingScreen() {
@@ -61,7 +62,7 @@ export default function App() {
   const [workspaceName, setWorkspaceName] = useState('복지4팀')
   const [messages, setMessages]           = useState([])
   const [todos, setTodos]                 = useState(INITIAL_TODOS)
-  const [aiModel, setAiModel]             = useState('Gemini Flash')
+  const [aiModel, setAiModel]             = useState('Llama 3.3 (무료)')
   const [settingsOpen, setSettingsOpen]   = useState(false)
 
   // ── Firestore 실시간 메시지 구독 ──────────────────────────
@@ -76,12 +77,11 @@ export default function App() {
   }, [user])
 
   // ── 메시지 전송 ───────────────────────────────────────────
-  const sendMessage = useCallback(async (text, file = null) => {
+  const sendMessage = useCallback(async (text, file = null, replyTo = null) => {
     const displayName = user?.displayName || '사용자'
     const photoURL    = user?.photoURL || null
 
     let fileData = null
-    // 파일은 base64로 Firestore에 직접 저장 (500KB 이하)
     if (file) {
       if (file.size <= 500 * 1024) {
         fileData = {
@@ -96,6 +96,7 @@ export default function App() {
     }
 
     const msgData = {
+      uid:         user?.uid || '',
       author:      displayName,
       avatar:      displayName.charAt(0),
       avatarColor: 'blue',
@@ -103,13 +104,14 @@ export default function App() {
       text:        text || '',
       type:        'text',
       createdAt:   serverTimestamp(),
+      ...(replyTo ? { replyTo } : {}),
       ...fileData,
     }
     await addDoc(collection(db, 'messages'), msgData)
 
-    // AI 응답
-    const lower = text.toLowerCase()
-    if (lower.includes('@ai비서') || lower.includes('@ai')) {
+    // AI 응답 — 멘션으로 지정된 모델 또는 기본 모델 사용
+    const targetModel = detectMentionedModel(text, aiModel)
+    if (targetModel !== null) {
       const aiRef = await addDoc(collection(db, 'messages'), {
         author:      'AI 비서',
         avatar:      'AI',
@@ -117,14 +119,24 @@ export default function App() {
         photoURL:    null,
         text:        '⏳ 답변을 생성하고 있습니다...',
         type:        'ai',
-        model:       aiModel,
+        model:       targetModel,
         createdAt:   serverTimestamp(),
       })
-      callAI(aiModel, text)
-        .then(reply  => updateDoc(doc(db, 'messages', aiRef.id), { text: reply }))
-        .catch(err   => updateDoc(doc(db, 'messages', aiRef.id), { text: `❌ 오류: ${err.message}` }))
+      callAI(targetModel, text)
+        .then(({ reply, usedModel }) => updateDoc(doc(db, 'messages', aiRef.id), { text: reply, model: usedModel }))
+        .catch(err                   => updateDoc(doc(db, 'messages', aiRef.id), { text: `❌ 오류: ${err.message}` }))
     }
   }, [user, aiModel])
+
+  // ── 메시지 삭제 ───────────────────────────────────────────
+  const deleteMessage = useCallback(async (id) => {
+    await deleteDoc(doc(db, 'messages', id))
+  }, [])
+
+  // ── 공지 지정 ─────────────────────────────────────────────
+  const markAsNotice = useCallback(async (id) => {
+    await updateDoc(doc(db, 'messages', id), { type: 'notice' })
+  }, [])
 
   const addTodo    = useCallback((todo) => setTodos(prev => [...prev, { ...todo, id: Date.now(), done: false }]), [])
   const toggleTodo = useCallback((id)   => setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t)), [])
@@ -143,6 +155,10 @@ export default function App() {
     messages: displayMessages, sendMessage,
     todos, addTodo, toggleTodo,
     aiModel, setAiModel, setSettingsOpen,
+    userDisplayName: user?.displayName || '사용자',
+    currentUser: user,
+    onDeleteMessage: deleteMessage,
+    onMarkNotice:    markAsNotice,
   }
 
   return (

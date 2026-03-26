@@ -1,16 +1,23 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import './TodoPanel.css'
 
-function TodoModal({ onClose, onAdd }) {
+function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
   const [type, setType]         = useState('directive')
   const [text, setText]         = useState('')
-  const [assignee, setAssignee] = useState('이복지')
   const [due, setDue]           = useState('')
   const [priority, setPriority] = useState('보통')
 
+  useEffect(() => {
+    if (!open) return
+    setType(defaultType === 'personal' ? 'personal' : 'directive')
+    setText('')
+    setDue('')
+    setPriority('보통')
+  }, [open, defaultType, userDisplayName])
+
   const handleAdd = () => {
     if (!text.trim()) return
-    onAdd({ type, text: text.trim(), assignee, due, urgent: priority === '긴급' })
+    onAdd({ type, text: text.trim(), assignee: userDisplayName, due, urgent: priority === '긴급' })
     onClose()
   }
 
@@ -31,9 +38,12 @@ function TodoModal({ onClose, onAdd }) {
         </div>
         <div className="form-group">
           <label className="form-label">담당자</label>
-          <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
-            <option>이복지</option><option>박사복</option><option>김팀장</option>
-          </select>
+          <input
+            className="form-input assignee-self"
+            readOnly
+            value={`${userDisplayName} (나)`}
+            aria-label="담당자 (접속 중인 계정)"
+          />
         </div>
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
@@ -76,7 +86,7 @@ function TodoItem({ item, onToggle }) {
   )
 }
 
-export default function TodoPanel({ todos, addTodo, toggleTodo }) {
+export default function TodoPanel({ todos, addTodo, toggleTodo, userDisplayName }) {
   const [collapsed, setCollapsed] = useState(false)
   const [filter, setFilter]       = useState('all')
   const [modalOpen, setModalOpen] = useState(false)
@@ -163,7 +173,9 @@ export default function TodoPanel({ todos, addTodo, toggleTodo }) {
 
       {modalOpen && (
         <TodoModal
+          open={modalOpen}
           defaultType={modalType}
+          userDisplayName={userDisplayName}
           onClose={() => setModalOpen(false)}
           onAdd={addTodo}
         />

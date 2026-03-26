@@ -3,7 +3,7 @@ import ChatMain from './ChatMain.jsx'
 import TodoPanel from './TodoPanel.jsx'
 import './MobileLayout.css'
 
-export default function MobileLayout({ workspaceName, messages, sendMessage, todos, addTodo, toggleTodo, aiModel, setSettingsOpen }) {
+export default function MobileLayout({ workspaceName, messages, sendMessage, todos, addTodo, toggleTodo, aiModel, setSettingsOpen, userDisplayName }) {
   const [activeTab, setActiveTab] = useState('chat')
 
   return (
@@ -22,7 +22,7 @@ export default function MobileLayout({ workspaceName, messages, sendMessage, tod
         )}
         {activeTab === 'todo' && (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <TodoPanel todos={todos} addTodo={addTodo} toggleTodo={toggleTodo} />
+            <TodoPanel todos={todos} addTodo={addTodo} toggleTodo={toggleTodo} userDisplayName={userDisplayName} />
           </div>
         )}
       </div>

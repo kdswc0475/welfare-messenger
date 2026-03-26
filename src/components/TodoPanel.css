@@ -163,6 +163,11 @@
   outline: none;
 }
 .form-input:focus { border-color: var(--accent); }
+.form-input.assignee-self {
+  cursor: default;
+  opacity: 0.95;
+}
+.form-input.assignee-self:focus { border-color: var(--border-hover); }
 .form-row { display: flex; gap: 8px; }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .btn-primary {

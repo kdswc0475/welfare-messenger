@@ -84,8 +84,12 @@ function AIPage({ aiModel, setAiModel }) {
     <div>
       <div className="settings-title">AI 비서 설정</div>
       <div className="setting-row">
-        <div><div className="setting-label">AI 모델</div><div className="setting-sub">기본 Gemini Flash (무료)</div></div>
+        <div><div className="setting-label">AI 모델</div><div className="setting-sub">기본 Llama 3.3 (무료 · Groq)</div></div>
         <select className="setting-select" value={aiModel} onChange={e => setAiModel(e.target.value)}>
+          <optgroup label="✅ 무료 (Groq)">
+            <option>Llama 3.3 (무료)</option>
+            <option>Mixtral (무료)</option>
+          </optgroup>
           <optgroup label="Google">
             <option>Gemini Flash</option>
             <option>Gemini Pro</option>
