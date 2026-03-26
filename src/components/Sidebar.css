@@ -1,14 +1,14 @@
 .sidebar {
-  width: 200px;
-  min-width: 200px;
+  width: var(--sidebar-w, 200px);
+  min-width: var(--sidebar-w, 200px);
   background: var(--sidebar-bg);
-  border-right: 0.5px solid var(--border);
   display: flex;
   flex-direction: column;
   transition: width 0.2s, min-width 0.2s;
   overflow: hidden;
 }
-.sidebar.collapsed { width: 52px; min-width: 52px; }
+.sidebar.collapsed { width: 52px !important; min-width: 52px !important; }
+.resizing .sidebar { transition: none; }
 
 .sidebar-header {
   display: flex;

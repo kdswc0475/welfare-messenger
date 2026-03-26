@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   collection, addDoc, updateDoc, deleteDoc, doc,
   onSnapshot, query, orderBy, limit, serverTimestamp
@@ -38,6 +38,12 @@ async function callAI(model, message) {
   return { reply: data.reply, usedModel: data.usedModel || model }
 }
 
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+function ResizeDivider({ onMouseDown }) {
+  return <div className="resize-divider" onMouseDown={onMouseDown} />
+}
+
 function LoadingScreen() {
   return (
     <div style={{
@@ -64,6 +70,38 @@ export default function App() {
   const [todos, setTodos]                 = useState(INITIAL_TODOS)
   const [aiModel, setAiModel]             = useState('Llama 3.3 (무료)')
   const [settingsOpen, setSettingsOpen]   = useState(false)
+
+  // ── 패널 너비 (localStorage 유지) ────────────────────────
+  const [sidebarW, setSidebarW] = useState(() => parseInt(localStorage.getItem('sidebarW') || '200', 10))
+  const [todoW,    setTodoW]    = useState(() => parseInt(localStorage.getItem('todoW')    || '260', 10))
+  const [resizing, setResizing] = useState(false)
+
+  useEffect(() => { localStorage.setItem('sidebarW', sidebarW) }, [sidebarW])
+  useEffect(() => { localStorage.setItem('todoW',    todoW)    }, [todoW])
+
+  const startResize = useCallback((e, panel) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = panel === 'left' ? sidebarW : todoW
+    setResizing(true)
+    document.body.style.cursor     = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (ev) => {
+      const delta = ev.clientX - startX
+      if (panel === 'left') setSidebarW(clamp(startW + delta, 140, 420))
+      else                  setTodoW   (clamp(startW - delta, 180, 500))
+    }
+    const onUp = () => {
+      setResizing(false)
+      document.body.style.cursor     = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup',   onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
+  }, [sidebarW, todoW])
 
   // ── Firestore 실시간 메시지 구독 ──────────────────────────
   useEffect(() => {
@@ -163,9 +201,14 @@ export default function App() {
 
   return (
     <>
-      <div className="desktop-layout desktop-only">
+      <div
+        className={`desktop-layout desktop-only${resizing ? ' resizing' : ''}`}
+        style={{ '--sidebar-w': `${sidebarW}px`, '--todo-w': `${todoW}px` }}
+      >
         <Sidebar {...sharedProps} />
+        <ResizeDivider onMouseDown={e => startResize(e, 'left')} />
         <ChatMain {...sharedProps} />
+        <ResizeDivider onMouseDown={e => startResize(e, 'right')} />
         <TodoPanel {...sharedProps} />
       </div>
       <div className="mobile-only">

@@ -1,14 +1,14 @@
 .todo-panel {
-  width: 260px;
-  min-width: 260px;
-  border-left: 0.5px solid var(--border);
+  width: var(--todo-w, 260px);
+  min-width: var(--todo-w, 260px);
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
   transition: width 0.2s, min-width 0.2s;
   overflow: hidden;
 }
-.todo-panel.collapsed { width: 52px; min-width: 52px; }
+.todo-panel.collapsed { width: 52px !important; min-width: 52px !important; }
+.resizing .todo-panel { transition: none; }
 
 .todo-header {
   display: flex;
