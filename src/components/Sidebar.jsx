@@ -2,12 +2,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import './Sidebar.css'
 
-const MEMBERS = [
-  { name: '김팀장', avatar: '김', color: 'green', status: 'online' },
-  { name: '이복지', avatar: '이', color: 'blue',  status: 'online' },
-  { name: '박사복', avatar: '박', color: 'coral', status: 'away'   },
-]
-
 export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen }) {
   const { user, logout }          = useAuth()
   const [collapsed, setCollapsed] = useState(false)
@@ -63,13 +57,22 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
         {/* Members */}
         <section className="ch-section">
           {!collapsed && <div className="section-label">멤버</div>}
-          {MEMBERS.map(m => (
-            <div className="member-row" key={m.name}>
-              <span className={`avatar av-${m.color}`}>{m.avatar}</span>
-              {!collapsed && <span className="member-name">{m.name}</span>}
-              {!collapsed && <span className={`dot dot-${m.status}`} />}
+          {user && (
+            <div className="member-row" key={user.uid}>
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName}
+                  referrerPolicy="no-referrer"
+                  style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                />
+              ) : (
+                <span className="avatar av-blue">{user.displayName?.charAt(0) || '?'}</span>
+              )}
+              {!collapsed && <span className="member-name">{user.displayName} <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(나)</span></span>}
+              {!collapsed && <span className="dot dot-online" />}
             </div>
-          ))}
+          )}
         </section>
       </div>
 

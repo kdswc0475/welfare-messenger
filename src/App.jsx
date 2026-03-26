@@ -8,38 +8,7 @@ import Login from './components/Login.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import './App.css'
 
-const INITIAL_MESSAGES = [
-  {
-    id: 1,
-    author: '김팀장',
-    avatar: '김',
-    avatarColor: 'green',
-    photoURL: null,
-    time: '오전 9:00',
-    type: 'notice',
-    text: '이번 주 수요일 오후 2시에 케이스 회의가 있습니다. @전체 참석 부탁드립니다.',
-  },
-  {
-    id: 2,
-    author: '이복지',
-    avatar: '이',
-    avatarColor: 'blue',
-    photoURL: null,
-    time: '오전 9:15',
-    type: 'text',
-    text: '확인했습니다!',
-  },
-  {
-    id: 3,
-    author: '박사복',
-    avatar: '박',
-    avatarColor: 'coral',
-    photoURL: null,
-    time: '오전 9:22',
-    type: 'text',
-    text: '네, 준비하겠습니다.',
-  },
-]
+const INITIAL_MESSAGES = []
 
 const INITIAL_TODOS = [
   { id: 1, type: 'directive', done: false, text: '긴급복지 신청서 검토 및 제출', assignee: '이복지', due: 'D-1', urgent: true },
