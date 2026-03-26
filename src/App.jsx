@@ -14,12 +14,6 @@ import { db } from './firebase.js'
 import { detectMentionedModel } from './aiMentions.js'
 import './App.css'
 
-const INITIAL_TODOS = [
-  { id: 1, type: 'directive', done: false, text: '긴급복지 신청서 검토 및 제출', assignee: '', due: 'D-1', urgent: true },
-  { id: 2, type: 'directive', done: true,  text: '주간 케이스 회의 안건 작성',   assignee: '', due: '완료',  urgent: false },
-  { id: 3, type: 'personal',  done: false, text: '방문일지 작성 (홍길동)',         assignee: '', due: '오늘',  urgent: false },
-  { id: 4, type: 'personal',  done: false, text: '상급기관 보고 공문 초안',        assignee: '', due: '금요일',urgent: false },
-]
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -67,7 +61,7 @@ export default function App() {
 
   const [workspaceName, setWorkspaceName] = useState('복지4팀')
   const [messages, setMessages]           = useState([])
-  const [todos, setTodos]                 = useState(INITIAL_TODOS)
+  const [todos, setTodos]                 = useState([])
   const [aiModel, setAiModel]             = useState('Llama 3.3 (무료)')
   const [settingsOpen, setSettingsOpen]   = useState(false)
   const [unread, setUnread]               = useState(0)
@@ -229,10 +223,39 @@ export default function App() {
     await updateDoc(doc(db, 'messages', id), { type: 'notice' })
   }, [])
 
-  const addTodo    = useCallback((todo)        => setTodos(prev => [...prev, { ...todo, id: Date.now(), done: false }]), [])
-  const toggleTodo = useCallback((id)          => setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t)), [])
-  const editTodo   = useCallback((id, updates) => setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t)), [])
-  const deleteTodo = useCallback((id)          => setTodos(prev => prev.filter(t => t.id !== id)), [])
+  // ── Firestore Todo 실시간 구독 ────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    const q = query(collection(db, 'todos'), orderBy('createdAt', 'asc'))
+    const unsubscribe = onSnapshot(q, snapshot => {
+      setTodos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+    return unsubscribe
+  }, [user])
+
+  // ── Todo CRUD (Firestore) ─────────────────────────────────
+  const addTodo = useCallback(async (todo) => {
+    await addDoc(collection(db, 'todos'), {
+      ...todo,
+      done:      false,
+      createdAt: serverTimestamp(),
+      createdBy: user?.uid || '',
+    })
+  }, [user])
+
+  const toggleTodo = useCallback(async (id) => {
+    const todo = todos.find(t => t.id === id)
+    if (!todo) return
+    await updateDoc(doc(db, 'todos', id), { done: !todo.done })
+  }, [todos])
+
+  const editTodo = useCallback(async (id, updates) => {
+    await updateDoc(doc(db, 'todos', id), updates)
+  }, [])
+
+  const deleteTodo = useCallback(async (id) => {
+    await deleteDoc(doc(db, 'todos', id))
+  }, [])
 
   if (loading) return <LoadingScreen />
   if (!user)   return <Login />
