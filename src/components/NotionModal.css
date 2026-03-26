@@ -123,3 +123,14 @@
 }
 .nm-status.success { color: var(--green-text); }
 .nm-status.error   { color: #c0392b; }
+.nm-errmsg {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #c0392b;
+  word-break: break-all;
+  white-space: pre-wrap;
+  background: #fff0f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  text-align: left;
+}

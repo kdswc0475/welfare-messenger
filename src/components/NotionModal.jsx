@@ -7,13 +7,17 @@ export default function NotionModal({ preview, onClose, onSave }) {
   const [project, setProject] = useState(PROJECTS[0])
   const [status, setStatus]   = useState('idle') // idle | loading | success | error
 
+  const [errMsg, setErrMsg] = useState('')
+
   const handleSave = async () => {
     setStatus('loading')
+    setErrMsg('')
     try {
       await onSave(project)
       setStatus('success')
       setTimeout(onClose, 1600)
-    } catch {
+    } catch (e) {
+      setErrMsg(e.message || '알 수 없는 오류')
       setStatus('error')
     }
   }
@@ -30,7 +34,12 @@ export default function NotionModal({ preview, onClose, onSave }) {
         {preview && <div className="nm-preview">{preview}</div>}
 
         {status === 'success' && <div className="nm-status success">✅ 노션에 저장됐습니다!</div>}
-        {status === 'error'   && <div className="nm-status error">❌ 저장 실패. 다시 시도해주세요.</div>}
+        {status === 'error' && (
+          <div className="nm-status error">
+            <div>❌ 저장 실패</div>
+            {errMsg && <div className="nm-errmsg">{errMsg}</div>}
+          </div>
+        )}
 
         {(status === 'idle' || status === 'loading') && (
           <>
