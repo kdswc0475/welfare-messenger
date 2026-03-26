@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
 import './Sidebar.css'
 
 const MEMBERS = [
@@ -8,15 +9,16 @@ const MEMBERS = [
 ]
 
 export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen }) {
-  const [collapsed, setCollapsed]   = useState(false)
-  const [editing, setEditing]       = useState(false)
-  const [draft, setDraft]           = useState(workspaceName)
-  const inputRef                    = useRef(null)
+  const { user, logout }          = useAuth()
+  const [collapsed, setCollapsed] = useState(false)
+  const [editing, setEditing]     = useState(false)
+  const [draft, setDraft]         = useState(workspaceName)
+  const inputRef                  = useRef(null)
 
   useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
 
-  const startEdit = () => { setDraft(workspaceName); setEditing(true) }
-  const saveEdit  = () => { if (draft.trim()) setWorkspaceName(draft.trim()); setEditing(false) }
+  const startEdit  = () => { setDraft(workspaceName); setEditing(true) }
+  const saveEdit   = () => { if (draft.trim()) setWorkspaceName(draft.trim()); setEditing(false) }
   const cancelEdit = () => setEditing(false)
 
   return (
@@ -71,11 +73,42 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
         </section>
       </div>
 
-      {/* Footer */}
+      {/* Footer — 로그인 유저 + 설정 + 로그아웃 */}
       <div className="sidebar-footer">
+        {/* 현재 로그인 유저 */}
+        {user && (
+          <div className={`user-profile ${collapsed ? 'user-profile-collapsed' : ''}`}>
+            {user.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName}
+                className="user-photo"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <span className="avatar av-blue user-photo-fallback">
+                {user.displayName?.charAt(0) || '?'}
+              </span>
+            )}
+            {!collapsed && (
+              <div className="user-info">
+                <span className="user-name">{user.displayName}</span>
+                <span className="user-email">{user.email}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 설정 버튼 */}
         <button className="settings-btn" onClick={() => setSettingsOpen(true)}>
           <span>⚙</span>
           {!collapsed && <span>관리자 설정</span>}
+        </button>
+
+        {/* 로그아웃 버튼 */}
+        <button className="logout-btn" onClick={logout} title="로그아웃">
+          <span>↩</span>
+          {!collapsed && <span>로그아웃</span>}
         </button>
       </div>
     </aside>

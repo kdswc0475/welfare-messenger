@@ -121,6 +121,57 @@
   border-top: 0.5px solid var(--border);
   padding: 8px 10px;
 }
+/* 로그인 유저 프로필 */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-md);
+  background: var(--accent-light);
+  border: 0.5px solid #c9dff5;
+  overflow: hidden;
+}
+.user-profile-collapsed {
+  justify-content: center;
+  padding: 6px;
+}
+.user-photo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.user-photo-fallback {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 12px !important;
+  flex-shrink: 0;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-email {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .settings-btn {
   display: flex;
   align-items: center;
@@ -133,5 +184,26 @@
   font-size: 12px;
   color: var(--text-secondary);
   justify-content: center;
+  margin-bottom: 4px;
 }
 .settings-btn:hover { background: var(--panel-bg); color: var(--text-primary); }
+
+/* 로그아웃 버튼 */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--text-muted);
+  justify-content: center;
+}
+.logout-btn:hover {
+  background: var(--red-bg);
+  color: var(--red-text);
+  border-color: #f0c4c4;
+}

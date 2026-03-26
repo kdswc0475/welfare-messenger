@@ -1,15 +1,39 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './ChatMain.css'
 
+function Avatar({ msg, size = 32 }) {
+  if (msg.photoURL) {
+    return (
+      <img
+        src={msg.photoURL}
+        alt={msg.author}
+        referrerPolicy="no-referrer"
+        style={{
+          width: size, height: size,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          flexShrink: 0,
+        }}
+      />
+    )
+  }
+  return (
+    <div
+      className={`avatar av-${msg.avatarColor}`}
+      style={{ width: size, height: size, fontSize: size * 0.375 }}
+    >
+      {msg.avatar}
+    </div>
+  )
+}
+
 function Message({ msg }) {
-  const isAI = msg.type === 'ai'
+  const isAI     = msg.type === 'ai'
   const isNotice = msg.type === 'notice'
 
   return (
     <div className="msg">
-      <div className={`avatar av-${msg.avatarColor}`} style={{ width: 32, height: 32, fontSize: 12 }}>
-        {msg.avatar}
-      </div>
+      <Avatar msg={msg} size={32} />
       <div className="msg-body">
         <div className="msg-meta">
           <span className="msg-name">{msg.author}</span>
