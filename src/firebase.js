@@ -1,19 +1,18 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 
-// ⚠️  아래 값을 Firebase Console에서 발급한 실제 값으로 교체하세요.
-// Firebase Console → 프로젝트 설정 → 웹 앱 추가 → 구성(Config) 복사
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_AUTH_DOMAIN",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  apiKey:            "AIzaSyDngVFJGa1Ce7qDvsffp7X1ctV5eFDVdKo",
+  authDomain:        "welfare-messenger.firebaseapp.com",
+  projectId:         "welfare-messenger",
+  storageBucket:     "welfare-messenger.firebasestorage.app",
+  messagingSenderId: "30891500738",
+  appId:             "1:30891500738:web:252625b3dfd16b8810075b",
+  measurementId:     "G-ZCJSHLNHEP"
 }
 
-const app      = initializeApp(firebaseConfig)
-export const auth     = getAuth(app)
+const app = initializeApp(firebaseConfig)
+export const auth = getAuth(app)
 export const googleProvider = new GoogleAuthProvider()
 
 // 로그인 시 Google 계정 선택 팝업 항상 표시
