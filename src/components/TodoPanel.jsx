@@ -1,23 +1,38 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { collection, onSnapshot, query } from 'firebase/firestore'
+import { db } from '../firebase.js'
 import './TodoPanel.css'
 
 function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
   const [type, setType]         = useState('directive')
   const [text, setText]         = useState('')
+  const [assignee, setAssignee] = useState(userDisplayName)
   const [due, setDue]           = useState('')
   const [priority, setPriority] = useState('보통')
+  const [members, setMembers]   = useState([])
+
+  // Firestore 전체 팀원 목록 구독
+  useEffect(() => {
+    const unsubscribe = onSnapshot(query(collection(db, 'users')), snapshot => {
+      setMembers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })))
+    })
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     if (!open) return
-    setType(defaultType === 'personal' ? 'personal' : 'directive')
+    const nextType = defaultType === 'personal' ? 'personal' : 'directive'
+    setType(nextType)
     setText('')
     setDue('')
     setPriority('보통')
+    // 개별업무는 본인, 업무지시는 첫 번째 팀원(또는 본인)
+    setAssignee(userDisplayName)
   }, [open, defaultType, userDisplayName])
 
   const handleAdd = () => {
     if (!text.trim()) return
-    onAdd({ type, text: text.trim(), assignee: userDisplayName, due, urgent: priority === '긴급' })
+    onAdd({ type, text: text.trim(), assignee, due, urgent: priority === '긴급' })
     onClose()
   }
 
@@ -28,8 +43,8 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
         <div className="modal-title">업무 등록</div>
 
         <div className="type-toggle">
-          <button className={`type-btn ${type === 'directive' ? 'active' : ''}`} onClick={() => setType('directive')}>업무지시</button>
-          <button className={`type-btn ${type === 'personal'  ? 'active' : ''}`} onClick={() => setType('personal')}>개별업무</button>
+          <button className={`type-btn ${type === 'directive' ? 'active' : ''}`} onClick={() => { setType('directive') }}>업무지시</button>
+          <button className={`type-btn ${type === 'personal'  ? 'active' : ''}`} onClick={() => { setType('personal'); setAssignee(userDisplayName) }}>개별업무</button>
         </div>
 
         <div className="form-group">
@@ -38,12 +53,25 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
         </div>
         <div className="form-group">
           <label className="form-label">담당자</label>
-          <input
-            className="form-input assignee-self"
-            readOnly
-            value={`${userDisplayName} (나)`}
-            aria-label="담당자 (접속 중인 계정)"
-          />
+          {type === 'personal' ? (
+            // 개별업무: 본인 고정
+            <input
+              className="form-input assignee-self"
+              readOnly
+              value={`${userDisplayName} (나)`}
+            />
+          ) : members.length > 0 ? (
+            // 업무지시: 팀원 드롭다운
+            <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
+              {members.map(m => (
+                <option key={m.uid} value={m.displayName}>
+                  {m.displayName}{m.displayName === userDisplayName ? ' (나)' : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input className="form-input assignee-self" readOnly value={userDisplayName} />
+          )}
         </div>
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
