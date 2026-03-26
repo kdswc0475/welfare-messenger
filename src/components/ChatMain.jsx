@@ -119,7 +119,11 @@ const CTX_ITEMS = [
 function ContextMenu({ menu, currentUser, onAction }) {
   if (!menu.show || !menu.msg) return null
   const msg   = menu.msg
-  const isOwn = currentUser && msg.uid && msg.uid === currentUser.uid
+  // uid가 있으면 uid로, 없으면(기존 메시지) author 이름으로 본인 판별
+  const isOwn = currentUser && (
+    (msg.uid  && msg.uid    === currentUser.uid) ||
+    (!msg.uid && msg.author === currentUser.displayName)
+  )
 
   const visible = CTX_ITEMS.filter(item => {
     if (item.id === 'delete')  return isOwn
