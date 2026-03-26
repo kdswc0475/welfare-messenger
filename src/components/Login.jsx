@@ -15,7 +15,7 @@ export default function Login() {
 
         {/* 헤더 */}
         <div className="login-header">
-          <h1 className="login-title">복지팀 메신저</h1>
+          <h1 className="login-title">복지4팀 메신저</h1>
           <p className="login-subtitle">팀원들과 소통하고, 업무를 관리하세요</p>
         </div>
 
@@ -38,7 +38,7 @@ export default function Login() {
 
         {/* 안내 문구 */}
         <p className="login-notice">
-          조직의 Google 계정(@welfare.kr)으로 로그인하세요.<br />
+          Google 계정으로 로그인하여 접속하세요.<br />
           승인된 계정만 접근할 수 있습니다.
         </p>
       </div>

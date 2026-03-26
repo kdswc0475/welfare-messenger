@@ -77,7 +77,7 @@ function LoadingScreen() {
 export default function App() {
   const { user, loading } = useAuth()
 
-  const [workspaceName, setWorkspaceName] = useState('복지팀')
+  const [workspaceName, setWorkspaceName] = useState('복지4팀')
   const [messages, setMessages]           = useState(INITIAL_MESSAGES)
   const [todos, setTodos]                 = useState(INITIAL_TODOS)
   const [aiModel, setAiModel]             = useState('Gemini Flash')
