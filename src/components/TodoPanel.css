@@ -168,6 +168,33 @@
   opacity: 0.95;
 }
 .form-input.assignee-self:focus { border-color: var(--border-hover); }
+
+/* ── 항목 수정/삭제 버튼 ──────────────────────────────────── */
+.todo-item { position: relative; }
+.todo-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.todo-actions.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.todo-action-btn {
+  background: none;
+  border: none;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s;
+}
+.todo-action-btn:hover { background: var(--border); }
+.todo-action-btn.delete:hover { background: #fde8e8; }
 .form-row { display: flex; gap: 8px; }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .btn-primary {

@@ -3,15 +3,16 @@ import { collection, onSnapshot, query } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import './TodoPanel.css'
 
-function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
+// ── 업무 등록/수정 모달 ────────────────────────────────────
+function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName, editItem }) {
   const [type, setType]         = useState('directive')
   const [text, setText]         = useState('')
   const [assignee, setAssignee] = useState(userDisplayName)
   const [due, setDue]           = useState('')
   const [priority, setPriority] = useState('보통')
   const [members, setMembers]   = useState([])
+  const isEditing = !!editItem
 
-  // Firestore 전체 팀원 목록 구독
   useEffect(() => {
     const unsubscribe = onSnapshot(query(collection(db, 'users')), snapshot => {
       setMembers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })))
@@ -21,18 +22,26 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
 
   useEffect(() => {
     if (!open) return
-    const nextType = defaultType === 'personal' ? 'personal' : 'directive'
-    setType(nextType)
-    setText('')
-    setDue('')
-    setPriority('보통')
-    // 개별업무는 본인, 업무지시는 첫 번째 팀원(또는 본인)
-    setAssignee(userDisplayName)
-  }, [open, defaultType, userDisplayName])
+    if (isEditing) {
+      setType(editItem.type || 'directive')
+      setText(editItem.text || '')
+      setAssignee(editItem.assignee || userDisplayName)
+      setDue(editItem.due || '')
+      setPriority(editItem.urgent ? '긴급' : '보통')
+    } else {
+      setType(defaultType === 'personal' ? 'personal' : 'directive')
+      setText('')
+      setAssignee(userDisplayName)
+      setDue('')
+      setPriority('보통')
+    }
+  }, [open, defaultType, userDisplayName, editItem, isEditing])
 
-  const handleAdd = () => {
+  const handleSubmit = () => {
     if (!text.trim()) return
-    onAdd({ type, text: text.trim(), assignee, due, urgent: priority === '긴급' })
+    const data = { type, text: text.trim(), assignee, due, urgent: priority === '긴급' }
+    if (isEditing) onEdit(editItem.id, data)
+    else           onAdd(data)
     onClose()
   }
 
@@ -40,28 +49,30 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <button className="modal-close" onClick={onClose}>✕</button>
-        <div className="modal-title">업무 등록</div>
+        <div className="modal-title">{isEditing ? '업무 수정' : '업무 등록'}</div>
 
         <div className="type-toggle">
-          <button className={`type-btn ${type === 'directive' ? 'active' : ''}`} onClick={() => { setType('directive') }}>업무지시</button>
+          <button className={`type-btn ${type === 'directive' ? 'active' : ''}`} onClick={() => setType('directive')}>업무지시</button>
           <button className={`type-btn ${type === 'personal'  ? 'active' : ''}`} onClick={() => { setType('personal'); setAssignee(userDisplayName) }}>개별업무</button>
         </div>
 
         <div className="form-group">
           <label className="form-label">업무 내용</label>
-          <input className="form-input" value={text} onChange={e => setText(e.target.value)} placeholder="업무 내용 입력" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          <input
+            className="form-input"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="업무 내용 입력"
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            autoFocus
+          />
         </div>
+
         <div className="form-group">
           <label className="form-label">담당자</label>
           {type === 'personal' ? (
-            // 개별업무: 본인 고정
-            <input
-              className="form-input assignee-self"
-              readOnly
-              value={`${userDisplayName} (나)`}
-            />
+            <input className="form-input assignee-self" readOnly value={`${userDisplayName} (나)`} />
           ) : members.length > 0 ? (
-            // 업무지시: 팀원 드롭다운
             <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
               {members.map(m => (
                 <option key={m.uid} value={m.displayName}>
@@ -73,6 +84,7 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
             <input className="form-input assignee-self" readOnly value={userDisplayName} />
           )}
         </div>
+
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
             <label className="form-label">마감일</label>
@@ -85,22 +97,30 @@ function TodoModal({ onClose, onAdd, open, defaultType, userDisplayName }) {
             </select>
           </div>
         </div>
+
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>취소</button>
-          <button className="btn-primary" onClick={handleAdd}>등록</button>
+          <button className="btn-primary" onClick={handleSubmit}>{isEditing ? '저장' : '등록'}</button>
         </div>
       </div>
     </div>
   )
 }
 
-function TodoItem({ item, onToggle }) {
+// ── To Do 항목 ────────────────────────────────────────────
+function TodoItem({ item, onToggle, onEdit, onDelete }) {
+  const [hover, setHover] = useState(false)
+
   return (
-    <div className="todo-item">
+    <div
+      className="todo-item"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       <div className={`todo-cb ${item.done ? 'checked' : ''}`} onClick={() => onToggle(item.id)}>
         {item.done && '✓'}
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div className={`todo-text ${item.done ? 'done' : ''}`}>{item.text}</div>
         <div className="todo-meta">
           {item.assignee && <span>담당: {item.assignee}</span>}
@@ -110,17 +130,37 @@ function TodoItem({ item, onToggle }) {
         {item.urgent && !item.done && <span className="tag urgent">긴급</span>}
         {!item.urgent && <span className="tag">{item.type === 'directive' ? '지시' : '개인'}</span>}
       </div>
+
+      {/* 호버 시 수정/삭제 버튼 */}
+      <div className={`todo-actions ${hover ? 'visible' : ''}`}>
+        <button
+          className="todo-action-btn edit"
+          title="수정"
+          onClick={e => { e.stopPropagation(); onEdit(item) }}
+        >✏️</button>
+        <button
+          className="todo-action-btn delete"
+          title="삭제"
+          onClick={e => { e.stopPropagation(); onDelete(item.id) }}
+        >🗑</button>
+      </div>
     </div>
   )
 }
 
-export default function TodoPanel({ todos, addTodo, toggleTodo, userDisplayName }) {
-  const [collapsed, setCollapsed] = useState(false)
-  const [filter, setFilter]       = useState('all')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalType, setModalType] = useState('directive')
+// ── 메인 패널 ─────────────────────────────────────────────
+export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, deleteTodo, userDisplayName }) {
+  const [collapsed, setCollapsed]   = useState(false)
+  const [filter, setFilter]         = useState('all')
+  const [modalOpen, setModalOpen]   = useState(false)
+  const [modalType, setModalType]   = useState('directive')
+  const [editingItem, setEditingItem] = useState(null)
 
-  const openModal = (type = 'directive') => { setModalType(type); setModalOpen(true) }
+  const openAdd  = (type = 'directive') => { setEditingItem(null); setModalType(type); setModalOpen(true) }
+  const openEdit = (item)               => { setEditingItem(item); setModalType(item.type); setModalOpen(true) }
+  const handleDelete = (id) => {
+    if (window.confirm('이 업무를 삭제할까요?')) deleteTodo(id)
+  }
 
   const filtered = useMemo(() => {
     switch (filter) {
@@ -136,12 +176,22 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, userDisplayName 
     return Math.round(todos.filter(t => t.done).length / todos.length * 100)
   }, [todos])
 
+  const renderItem = (t) => (
+    <TodoItem
+      key={t.id}
+      item={t}
+      onToggle={toggleTodo}
+      onEdit={openEdit}
+      onDelete={handleDelete}
+    />
+  )
+
   return (
     <>
       <aside className={`todo-panel ${collapsed ? 'collapsed' : ''}`}>
         <div className="todo-header">
           {!collapsed && <span className="todo-title">To Do 현황판</span>}
-          {!collapsed && <button className="add-btn" onClick={() => openModal()}>+ 업무지시</button>}
+          {!collapsed && <button className="add-btn" onClick={() => openAdd()}>+ 업무지시</button>}
           <button className="icon-sm toggle-btn" onClick={() => setCollapsed(v => !v)}>
             {collapsed ? '◀' : '▶'}
           </button>
@@ -164,36 +214,27 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, userDisplayName 
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
 
-              {/* Directive section */}
               {(filter === 'all' || filter === 'directive') && (
                 <>
                   <div className="section-hd">
                     <span className="section-lbl">업무지시</span>
-                    <button className="plus-btn" onClick={() => openModal('directive')}>＋</button>
+                    <button className="plus-btn" onClick={() => openAdd('directive')}>＋</button>
                   </div>
-                  {filtered.filter(t => t.type === 'directive').map(t => (
-                    <TodoItem key={t.id} item={t} onToggle={toggleTodo} />
-                  ))}
+                  {filtered.filter(t => t.type === 'directive').map(renderItem)}
                 </>
               )}
 
-              {/* Personal section */}
               {(filter === 'all' || filter === 'personal') && (
                 <>
                   <div className="section-hd">
                     <span className="section-lbl">개별업무</span>
-                    <button className="plus-btn" onClick={() => openModal('personal')}>＋</button>
+                    <button className="plus-btn" onClick={() => openAdd('personal')}>＋</button>
                   </div>
-                  {filtered.filter(t => t.type === 'personal').map(t => (
-                    <TodoItem key={t.id} item={t} onToggle={toggleTodo} />
-                  ))}
+                  {filtered.filter(t => t.type === 'personal').map(renderItem)}
                 </>
               )}
 
-              {/* Done section */}
-              {filter === 'done' && filtered.map(t => (
-                <TodoItem key={t.id} item={t} onToggle={toggleTodo} />
-              ))}
+              {filter === 'done' && filtered.map(renderItem)}
             </div>
           </>
         )}
@@ -204,8 +245,10 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, userDisplayName 
           open={modalOpen}
           defaultType={modalType}
           userDisplayName={userDisplayName}
-          onClose={() => setModalOpen(false)}
+          editItem={editingItem}
+          onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onAdd={addTodo}
+          onEdit={editTodo}
         />
       )}
     </>

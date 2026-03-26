@@ -176,8 +176,10 @@ export default function App() {
     await updateDoc(doc(db, 'messages', id), { type: 'notice' })
   }, [])
 
-  const addTodo    = useCallback((todo) => setTodos(prev => [...prev, { ...todo, id: Date.now(), done: false }]), [])
-  const toggleTodo = useCallback((id)   => setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t)), [])
+  const addTodo    = useCallback((todo)        => setTodos(prev => [...prev, { ...todo, id: Date.now(), done: false }]), [])
+  const toggleTodo = useCallback((id)          => setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t)), [])
+  const editTodo   = useCallback((id, updates) => setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t)), [])
+  const deleteTodo = useCallback((id)          => setTodos(prev => prev.filter(t => t.id !== id)), [])
 
   if (loading) return <LoadingScreen />
   if (!user)   return <Login />
@@ -191,7 +193,7 @@ export default function App() {
   const sharedProps = {
     workspaceName, setWorkspaceName,
     messages: displayMessages, sendMessage,
-    todos, addTodo, toggleTodo,
+    todos, addTodo, toggleTodo, editTodo, deleteTodo,
     aiModel, setAiModel, setSettingsOpen,
     userDisplayName: user?.displayName || '사용자',
     currentUser: user,
