@@ -73,9 +73,18 @@ function AIPage({ aiModel, setAiModel }) {
       <div className="setting-row">
         <div><div className="setting-label">AI 모델</div><div className="setting-sub">기본 Gemini Flash (무료)</div></div>
         <select className="setting-select" value={aiModel} onChange={e => setAiModel(e.target.value)}>
-          <option>Gemini Flash</option>
-          <option>Gemini Pro</option>
-          <option>Claude Sonnet</option>
+          <optgroup label="Google">
+            <option>Gemini Flash</option>
+            <option>Gemini Pro</option>
+          </optgroup>
+          <optgroup label="OpenAI">
+            <option>GPT-4o</option>
+            <option>GPT-3.5</option>
+          </optgroup>
+          <optgroup label="Anthropic">
+            <option>Claude Sonnet</option>
+            <option>Claude Haiku</option>
+          </optgroup>
         </select>
       </div>
       <div className="setting-row">

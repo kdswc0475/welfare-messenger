@@ -17,11 +17,15 @@ const INITIAL_TODOS = [
   { id: 4, type: 'personal',  done: false, text: '상급기관 보고 공문 초안',        assignee: '',       due: '금요일',urgent: false },
 ]
 
-const AI_RESPONSES = {
-  '방문일지': '방문일지 필수 항목:\n① 방문일시·장소\n② 대상자 기본정보\n③ 방문목적\n④ 서비스 현황 및 욕구\n⑤ 개입 내용 및 결과\n⑥ 다음 방문 계획\n⑦ 담당자 서명\n\n사회보장정보시스템(행복e음)에 동일 항목 입력 필수입니다.',
-  '긴급복지': '긴급복지지원 신청 요건:\n① 소득기준: 중위소득 75% 이하\n② 재산: 대도시 2.4억 이하\n③ 위기사유: 실직·질병·화재·이혼 등\n\n지원내용: 생계·의료·주거·사회복지서비스 연계',
-  '공문': '상급기관 보고 공문 초안:\n\n수 신: OO시 복지정책과장\n제 목: 긴급복지지원 처리 결과 보고\n\n1. 관련: 사회복지사업법 제33조의7\n2. 위 호와 관련하여 아래와 같이 보고합니다.\n\n아 래\n가. 지원일시: 2025.03\n나. 지원대상: O명\n다. 지원금액: O원',
-  '케이스': '케이스 기록 작성 시 포함 항목:\n① 인적사항 및 가구 현황\n② 욕구 및 문제 사정\n③ 서비스 계획 및 목표\n④ 개입 내용 (날짜순)\n⑤ 평가 및 종결 사유',
+async function callAI(model, message) {
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, message }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'AI 오류')
+  return data.reply
 }
 
 // 로딩 스피너
@@ -76,24 +80,33 @@ export default function App() {
     setMessages(prev => [...prev, newMsg])
 
     const lower = text.toLowerCase()
-    if (lower.includes('@ai') || lower.includes('@AI')) {
-      let reply = '네, 확인했습니다! 더 구체적으로 질문해 주시면 도움드릴게요.'
-      for (const [key, val] of Object.entries(AI_RESPONSES)) {
-        if (lower.includes(key)) { reply = val; break }
-      }
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          author: 'AI 비서',
-          avatar: 'AI',
-          avatarColor: 'ai',
-          photoURL: null,
-          time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-          type: 'ai',
-          text: reply,
-          model: aiModel,
-        }])
-      }, 700)
+    if (lower.includes('@ai비서') || lower.includes('@ai')) {
+      const thinkingId = Date.now()
+      setMessages(prev => [...prev, {
+        id: thinkingId,
+        author: 'AI 비서',
+        avatar: 'AI',
+        avatarColor: 'ai',
+        photoURL: null,
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        type: 'ai',
+        text: '⏳ 답변을 생성하고 있습니다...',
+        model: aiModel,
+      }])
+
+      callAI(aiModel, text)
+        .then(reply => {
+          setMessages(prev => prev.map(m =>
+            m.id === thinkingId ? { ...m, text: reply } : m
+          ))
+        })
+        .catch(err => {
+          setMessages(prev => prev.map(m =>
+            m.id === thinkingId
+              ? { ...m, text: `❌ 오류: ${err.message}` }
+              : m
+          ))
+        })
     }
   }, [genId, aiModel, user])
 
