@@ -61,7 +61,7 @@ export default function App() {
   const [workspaceName, setWorkspaceName] = useState('복지4팀')
   const [messages, setMessages]           = useState([])
   const [todos, setTodos]                 = useState(INITIAL_TODOS)
-  const [aiModel, setAiModel]             = useState('Gemini Flash')
+  const [aiModel, setAiModel]             = useState('GPT-4o')
   const [settingsOpen, setSettingsOpen]   = useState(false)
 
   // ── Firestore 실시간 메시지 구독 ──────────────────────────
