@@ -235,13 +235,33 @@ export default function App() {
 
   // ── Todo CRUD (Firestore) ─────────────────────────────────
   const addTodo = useCallback(async (todo) => {
-    await addDoc(collection(db, 'todos'), {
+    const ref = await addDoc(collection(db, 'todos'), {
       ...todo,
       done:      false,
       createdAt: serverTimestamp(),
       createdBy: user?.uid || '',
     })
-  }, [user])
+
+    // 신규 등록은 같은 카테고리 내에서 날짜 오름차순으로 자동 정렬한다.
+    const dueKey = (v) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '9999-12-31')
+    const sameTypeActive = todos
+      .filter(t => t.type === todo.type && !t.done)
+      .concat([{ id: ref.id, type: todo.type, due: todo.due, sortOrder: Number.MAX_SAFE_INTEGER }])
+
+    sameTypeActive.sort((a, b) => {
+      const dueCmp = dueKey(a.due).localeCompare(dueKey(b.due))
+      if (dueCmp !== 0) return dueCmp
+      const aOrder = Number.isFinite(Number(a.sortOrder)) ? Number(a.sortOrder) : Number.MAX_SAFE_INTEGER
+      const bOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : Number.MAX_SAFE_INTEGER
+      return aOrder - bOrder
+    })
+
+    const batch = writeBatch(db)
+    sameTypeActive.forEach((item, index) => {
+      batch.update(doc(db, 'todos', item.id), { sortOrder: index + 1 })
+    })
+    await batch.commit()
+  }, [user, todos])
 
   const toggleTodo = useCallback(async (id) => {
     const todo = todos.find(t => t.id === id)
