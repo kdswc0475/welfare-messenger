@@ -72,9 +72,21 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
         <div className="form-group">
           <label className="form-label">담당자</label>
           {type === 'personal' ? (
-            <input className="form-input assignee-self" readOnly value={`${userDisplayName} (나)`} />
+            members.length > 0 ? (
+              <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
+                <option value="공통">공통</option>
+                {members.map(m => (
+                  <option key={m.uid} value={m.displayName}>
+                    {m.displayName}{m.displayName === userDisplayName ? ' (나)' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input className="form-input assignee-self" readOnly value={`${userDisplayName} (나)`} />
+            )
           ) : members.length > 0 ? (
             <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
+              <option value="공통">공통</option>
               {members.map(m => (
                 <option key={m.uid} value={m.displayName}>
                   {m.displayName}{m.displayName === userDisplayName ? ' (나)' : ''}
