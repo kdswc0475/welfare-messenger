@@ -174,7 +174,7 @@ function MentionPopup({ items, activeIdx, onSelect }) {
   )
 }
 
-export default function ChatMain({ messages, sendMessage, aiModel, currentUser, onDeleteMessage, onMarkNotice }) {
+export default function ChatMain({ messages, sendMessage, aiModel, currentUser, onDeleteMessage, onMarkNotice, selectedChannel, channelOptions }) {
   const [input, setInput]             = useState('')
   const [tab, setTab]                 = useState('chat')
   const [pendingFile, setPendingFile] = useState(null)
@@ -320,6 +320,8 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
     e.target.value = ''
   }
 
+  const activeChannel = (channelOptions || []).find(ch => ch.id === selectedChannel) || { id: 'notice', label: '공지사항', icon: '🔒' }
+
   return (
     <main className="chat-main">
       {/* 전역 컨텍스트 메뉴 (fixed 포지션) */}
@@ -349,8 +351,8 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
 
       {/* Channel header */}
       <div className="chat-header">
-        <span className="ch-lock">🔒</span>
-        <span className="chat-ch-name">공지사항</span>
+        <span className="ch-lock">{activeChannel.icon}</span>
+        <span className="chat-ch-name">{activeChannel.label}</span>
         <div className="header-actions">
           <button className="hbtn" title="화상회의">🎥</button>
           <button className="hbtn" title="멤버">👥</button>

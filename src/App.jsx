@@ -14,6 +14,8 @@ import { db } from './firebase.js'
 import { detectMentionedModel } from './aiMentions.js'
 import './App.css'
 
+const DEFAULT_NOTIFY = { mention: true, general: true, focusMode: false }
+
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -65,9 +67,27 @@ export default function App() {
   const [aiModel, setAiModel]             = useState('Llama 3.3 (무료)')
   const [settingsOpen, setSettingsOpen]   = useState(false)
   const [unread, setUnread]               = useState(0)
+  const [selectedChannel, setSelectedChannel] = useState('notice')
+
+  // ── 알림 설정 (SettingsModal과 공유) ──────────────────────
+  const notifyStorageKey = user?.uid ? `welfare-messenger:notify:${user.uid}` : null
+  const [notifySettings, setNotifySettings] = useState(DEFAULT_NOTIFY)
+
+  useEffect(() => {
+    if (!notifyStorageKey) return
+    try {
+      const raw = localStorage.getItem(notifyStorageKey)
+      if (raw) setNotifySettings({ ...DEFAULT_NOTIFY, ...JSON.parse(raw) })
+    } catch { /* ignore */ }
+  }, [notifyStorageKey])
+
+  useEffect(() => {
+    if (!notifyStorageKey) return
+    try { localStorage.setItem(notifyStorageKey, JSON.stringify(notifySettings)) } catch { /* ignore */ }
+  }, [notifyStorageKey, notifySettings])
 
   // ── 알림 권한 요청 ────────────────────────────────────────
-  const notifAllowed = useRef(false)
+  const notifAllowed = useRef(Notification?.permission === 'granted')
   useEffect(() => {
     if (!user || !('Notification' in window)) return
     if (Notification.permission === 'granted') { notifAllowed.current = true; return }
@@ -167,6 +187,10 @@ export default function App() {
     document.addEventListener('mouseup',   onUp)
   }, [sidebarW, todoW])
 
+  // notifySettings 최신값을 클로저에서 참조하기 위한 ref
+  const notifySettingsRef = useRef(notifySettings)
+  useEffect(() => { notifySettingsRef.current = notifySettings }, [notifySettings])
+
   // ── Firestore 실시간 메시지 구독 + 알림 ──────────────────
   const prevMsgCount  = useRef(0)
   const isInitialLoad = useRef(true)
@@ -185,16 +209,29 @@ export default function App() {
           // 본인 메시지·AI 메시지는 알림 제외
           if (msg.uid === user.uid || msg.type === 'ai') return
 
-          // 탭이 숨겨진 경우 unread 증가
-          if (document.hidden) setUnread(n => n + 1)
+          // 탭이 숨겨진 경우에만 unread 증가 + OS 알림
+          if (!document.hidden) return
+          setUnread(n => n + 1)
 
-          // OS 알림 표시
+          // 집중 모드 시간 체크 (21:00 ~ 08:00)
+          const hour = new Date().getHours()
+          const ns = notifySettingsRef.current
+          const blocked = ns.focusMode && (hour >= 21 || hour < 8)
+          if (blocked) return
+
+          // 알림 설정 확인 (일반 메시지 또는 멘션)
+          const isMention = msg.text?.includes(`@${user.displayName}`)
+          const shouldNotify = ns.general || (ns.mention && isMention)
+          if (!shouldNotify) return
+
+          // OS 알림 표시 (탭이 숨겨진 경우에만)
           if (notifAllowed.current) {
             const notif = new Notification(msg.author || '복지 메신저', {
               body: msg.text?.slice(0, 80) || (msg.fileName ? `📎 ${msg.fileName}` : '새 메시지'),
               icon: '/icon-192.png',
               badge: '/icon-192.png',
               tag: msg.id,
+              renotify: true,
             })
             notif.onclick = () => { window.focus(); notif.close() }
           }
@@ -207,6 +244,11 @@ export default function App() {
     })
     return unsubscribe
   }, [user])
+
+  const channelOptions = [
+    { id: 'notice', label: '공지사항', icon: '🔒' },
+    { id: 'daily', label: `daily-${workspaceName}`, icon: '#' },
+  ]
 
   // ── 메시지 전송 ───────────────────────────────────────────
   const sendMessage = useCallback(async (text, file = null, replyTo = null) => {
@@ -229,6 +271,7 @@ export default function App() {
 
     const msgData = {
       uid:         user?.uid || '',
+      channel:     selectedChannel,
       author:      displayName,
       avatar:      displayName.charAt(0),
       avatarColor: 'blue',
@@ -272,7 +315,7 @@ export default function App() {
         .then(({ reply, usedModel }) => updateDoc(doc(db, 'messages', aiRef.id), { text: reply, model: usedModel }))
         .catch(err                   => updateDoc(doc(db, 'messages', aiRef.id), { text: `❌ 오류: ${err.message}` }))
     }
-  }, [user, aiModel])
+  }, [user, aiModel, selectedChannel])
 
   // ── 메시지 삭제 ───────────────────────────────────────────
   const deleteMessage = useCallback(async (id) => {
@@ -351,7 +394,12 @@ export default function App() {
   if (!user)   return <Login />
 
   // Firestore timestamp → 표시 시간 변환
-  const displayMessages = messages.map(m => ({
+  const visibleMessages = messages.filter(m => {
+    const msgChannel = m.channel || 'notice'
+    return msgChannel === selectedChannel
+  })
+
+  const displayMessages = visibleMessages.map(m => ({
     ...m,
     time: m.createdAt ? formatTime(m.createdAt) : '',
   }))
@@ -362,6 +410,7 @@ export default function App() {
     todos, addTodo, toggleTodo, editTodo, deleteTodo,
     reorderTodos,
     aiModel, setAiModel, setSettingsOpen,
+    selectedChannel, setSelectedChannel, channelOptions,
     userDisplayName: user?.displayName || '사용자',
     currentUser: user,
     onDeleteMessage: deleteMessage,
@@ -389,6 +438,8 @@ export default function App() {
           setWorkspaceName={setWorkspaceName}
           aiModel={aiModel}
           setAiModel={setAiModel}
+          notifySettings={notifySettings}
+          setNotifySettings={setNotifySettings}
           onClose={() => setSettingsOpen(false)}
         />
       )}

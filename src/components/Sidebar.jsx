@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { db } from '../firebase.js'
 import './Sidebar.css'
 
-export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen }) {
+export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen, selectedChannel, setSelectedChannel, channelOptions }) {
   const { user, logout }          = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
@@ -60,11 +60,16 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
         {/* 채널 */}
         <section className="ch-section">
           {!collapsed && <div className="section-label">채널</div>}
-          <div className="channel-item active">
-            <span className="ch-icon">🔒</span>
-            {!collapsed && <span className="ch-name">공지사항</span>}
-            {!collapsed && <span className="badge">1</span>}
-          </div>
+          {(channelOptions || []).map(ch => (
+            <div
+              key={ch.id}
+              className={`channel-item ${selectedChannel === ch.id ? 'active' : ''}`}
+              onClick={() => setSelectedChannel?.(ch.id)}
+            >
+              <span className="ch-icon">{ch.icon}</span>
+              {!collapsed && <span className="ch-name">{ch.label}</span>}
+            </div>
+          ))}
         </section>
 
         {/* 온라인 멤버 */}
