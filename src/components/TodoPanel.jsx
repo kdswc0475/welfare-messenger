@@ -235,7 +235,8 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
       <aside className={`todo-panel ${collapsed ? 'collapsed' : ''}`}>
         <div className="todo-header">
           {!collapsed && <span className="todo-title">To Do 현황판</span>}
-          {!collapsed && <button className="add-btn" onClick={() => openAdd()}>+ 요청사항</button>}
+          {!collapsed && <button className="add-btn" onClick={() => openAdd('directive')}>+ 업무지시</button>}
+          {!collapsed && <button className="add-btn" onClick={() => openAdd('personal')}>+ 요청사항</button>}
           <button className="icon-sm toggle-btn" onClick={() => setCollapsed(v => !v)}>
             {collapsed ? '◀' : '▶'}
           </button>
@@ -244,7 +245,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
         {!collapsed && (
           <>
             <div className="todo-tabs">
-              {[['all','전체'],['directive','업무지시'],['personal','개별'],['done','완료']].map(([v,l]) => (
+              {[['all','전체'],['directive','업무지시'],['personal','요청사항'],['done','완료']].map(([v,l]) => (
                 <button key={v} className={`todo-tab ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
               ))}
             </div>
@@ -271,7 +272,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
               {(filter === 'all' || filter === 'personal') && (
                 <>
                   <div className="section-hd">
-                    <span className="section-lbl">개별업무</span>
+                    <span className="section-lbl">요청사항</span>
                     <button className="plus-btn" onClick={() => openAdd('personal')}>＋</button>
                   </div>
                   {filtered.filter(t => t.type === 'personal').map(renderItem)}
