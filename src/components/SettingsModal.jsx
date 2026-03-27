@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
+import { collection, onSnapshot, query } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext.jsx'
+import { db } from '../firebase.js'
 import './SettingsModal.css'
 
 const PAGES = ['일반', '멤버 관리', 'AI 비서', '알림', '보안', '연동', '레이아웃']
@@ -47,6 +49,14 @@ function MembersPage() {
   const [photo, setPhoto] = useState(user?.photoURL || '')
   const [saving, setSaving] = useState(false)
   const [resultMsg, setResultMsg] = useState('')
+  const [members, setMembers] = useState([])
+
+  React.useEffect(() => {
+    const unsubscribe = onSnapshot(query(collection(db, 'users')), (snapshot) => {
+      setMembers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })))
+    })
+    return unsubscribe
+  }, [])
 
   const onSaveProfile = async () => {
     setResultMsg('')
@@ -65,31 +75,34 @@ function MembersPage() {
     <div>
       <div className="settings-title">멤버 관리</div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-        현재 로그인된 멤버
+        현재 등록된 멤버
       </div>
-      {user && (
-        <div className="member-row">
-          {user.photoURL ? (
+      {members.map(m => (
+        <div className="member-row" key={m.uid}>
+          {m.photoURL ? (
             <img
-              src={user.photoURL}
-              alt={user.displayName}
+              src={m.photoURL}
+              alt={m.displayName}
               referrerPolicy="no-referrer"
               style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }}
             />
           ) : (
             <div className="avatar av-blue" style={{ width: 30, height: 30, fontSize: 12 }}>
-              {user.displayName?.charAt(0)}
+              {m.displayName?.charAt(0)}
             </div>
           )}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{user.displayName}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user.email}</div>
+            <div style={{ fontSize: 13 }}>
+              {m.displayName}
+              {m.uid === user?.uid ? <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>(나)</span> : null}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.email}</div>
           </div>
-          <select className="role-select" defaultValue="관리자">
+          <select className="role-select" defaultValue={m.uid === user?.uid ? '관리자' : '멤버'}>
             <option>관리자</option><option>멤버</option><option>게스트</option>
           </select>
         </div>
-      )}
+      ))}
       <div className="setting-row">
         <div><div className="setting-label">닉네임</div></div>
         <input
