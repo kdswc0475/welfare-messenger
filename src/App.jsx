@@ -134,6 +134,13 @@ export default function App() {
           pushEnabled: true,
           lastPushTokenAt: serverTimestamp(),
         }, { merge: true })
+
+        // Firestore rules 이슈를 대비해 서버 경로로도 동일 토큰 등록
+        await fetch('/api/push-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid, token }),
+        }).catch(() => {})
       } catch (err) {
         console.warn('FCM 초기화 실패:', err)
       }
