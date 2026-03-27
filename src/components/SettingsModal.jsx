@@ -42,7 +42,25 @@ function GeneralPage({ workspaceName, setWorkspaceName }) {
 }
 
 function MembersPage() {
-  const { user } = useAuth()
+  const { user, updateMemberProfile } = useAuth()
+  const [name, setName] = useState(user?.displayName || '')
+  const [photo, setPhoto] = useState(user?.photoURL || '')
+  const [saving, setSaving] = useState(false)
+  const [resultMsg, setResultMsg] = useState('')
+
+  const onSaveProfile = async () => {
+    setResultMsg('')
+    setSaving(true)
+    try {
+      await updateMemberProfile({ displayName: name, photoURL: photo })
+      setResultMsg('프로필이 저장되었습니다.')
+    } catch (e) {
+      setResultMsg(e?.message || '프로필 저장 중 오류가 발생했습니다.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div>
       <div className="settings-title">멤버 관리</div>
@@ -70,6 +88,33 @@ function MembersPage() {
           <select className="role-select" defaultValue="관리자">
             <option>관리자</option><option>멤버</option><option>게스트</option>
           </select>
+        </div>
+      )}
+      <div className="setting-row">
+        <div><div className="setting-label">닉네임</div></div>
+        <input
+          className="setting-input"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="닉네임 입력"
+        />
+      </div>
+      <div className="setting-row">
+        <div><div className="setting-label">사진 URL</div><div className="setting-sub">비우면 기본 아바타 사용</div></div>
+        <input
+          className="setting-input"
+          style={{ width: 220 }}
+          value={photo}
+          onChange={e => setPhoto(e.target.value)}
+          placeholder="https://example.com/profile.jpg"
+        />
+      </div>
+      <button className="save-btn" onClick={onSaveProfile} disabled={saving}>
+        {saving ? '저장 중...' : '프로필 저장'}
+      </button>
+      {resultMsg && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+          {resultMsg}
         </div>
       )}
       <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-muted)' }}>

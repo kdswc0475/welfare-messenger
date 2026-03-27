@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
+import { onAuthStateChanged, signInWithPopup, signOut, updateProfile } from 'firebase/auth'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, googleProvider, db } from '../firebase'
 
@@ -56,8 +56,36 @@ export function AuthProvider({ children }) {
     await signOut(auth)
   }
 
+  const updateMemberProfile = async ({ displayName, photoURL }) => {
+    if (!auth.currentUser) throw new Error('로그인 정보가 없습니다.')
+
+    const trimmedName = (displayName || '').trim()
+    if (!trimmedName) throw new Error('닉네임을 입력해주세요.')
+
+    const normalizedPhotoURL = (photoURL || '').trim()
+    if (normalizedPhotoURL && !/^https?:\/\//i.test(normalizedPhotoURL)) {
+      throw new Error('사진 URL은 http:// 또는 https://로 시작해야 합니다.')
+    }
+
+    await updateProfile(auth.currentUser, {
+      displayName: trimmedName,
+      photoURL: normalizedPhotoURL || null,
+    })
+
+    await setDoc(doc(db, 'users', auth.currentUser.uid), {
+      uid: auth.currentUser.uid,
+      displayName: trimmedName,
+      email: auth.currentUser.email,
+      photoURL: normalizedPhotoURL || null,
+      lastSeen: serverTimestamp(),
+    }, { merge: true })
+
+    // Reflect updates in the current UI without requiring re-login.
+    setUser(auth.currentUser ? { ...auth.currentUser } : null)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, logout, updateMemberProfile }}>
       {children}
     </AuthContext.Provider>
   )
