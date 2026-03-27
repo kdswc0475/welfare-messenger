@@ -162,6 +162,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
   const [modalType, setModalType]     = useState('directive')
   const [editingItem, setEditingItem] = useState(null)
   const [notionItem, setNotionItem]   = useState(null)
+  const [memo, setMemo]               = useState('')
 
   const openAdd  = (type = 'directive') => { setEditingItem(null); setModalType(type); setModalOpen(true) }
   const openEdit = (item)               => { setEditingItem(item); setModalType(item.type); setModalOpen(true) }
@@ -201,6 +202,23 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
     return Math.round(todos.filter(t => t.done).length / todos.length * 100)
   }, [todos])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('welfare-messenger:todo-memo')
+      if (saved) setMemo(saved)
+    } catch {
+      // Ignore localStorage access issues in restricted contexts.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('welfare-messenger:todo-memo', memo)
+    } catch {
+      // Ignore localStorage access issues in restricted contexts.
+    }
+  }, [memo])
+
   const renderItem = (t) => (
     <TodoItem
       key={t.id}
@@ -217,7 +235,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
       <aside className={`todo-panel ${collapsed ? 'collapsed' : ''}`}>
         <div className="todo-header">
           {!collapsed && <span className="todo-title">To Do 현황판</span>}
-          {!collapsed && <button className="add-btn" onClick={() => openAdd()}>+ 업무지시</button>}
+          {!collapsed && <button className="add-btn" onClick={() => openAdd()}>+ 요청사항</button>}
           <button className="icon-sm toggle-btn" onClick={() => setCollapsed(v => !v)}>
             {collapsed ? '◀' : '▶'}
           </button>
@@ -261,6 +279,16 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
               )}
 
               {filter === 'done' && filtered.map(renderItem)}
+            </div>
+
+            <div className="memo-section">
+              <div className="memo-title">메모장</div>
+              <textarea
+                className="memo-input"
+                value={memo}
+                onChange={e => setMemo(e.target.value)}
+                placeholder="메모를 입력하세요"
+              />
             </div>
           </>
         )}

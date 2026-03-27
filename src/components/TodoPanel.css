@@ -63,6 +63,7 @@
 .todo-tab:hover { color: var(--text-primary); }
 
 .todo-body { flex: 1; overflow-y: auto; padding: 8px; }
+.todo-body { min-height: 0; }
 
 .progress-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; }
 .progress-label { font-size: 11px; color: var(--text-muted); }
@@ -224,3 +225,37 @@
   color: var(--text-secondary);
 }
 .btn-cancel:hover { background: var(--sidebar-bg); }
+
+.memo-section {
+  border-top: 0.5px solid var(--border);
+  padding: 10px 10px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 220px;
+}
+
+.memo-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.memo-input {
+  width: 100%;
+  flex: 1;
+  resize: none;
+  border: 0.5px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: var(--panel-bg);
+  outline: none;
+}
+
+.memo-input:focus {
+  border-color: var(--accent);
+}
