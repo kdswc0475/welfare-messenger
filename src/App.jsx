@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
-  collection, addDoc, updateDoc, deleteDoc, doc,
+  collection, addDoc, updateDoc, deleteDoc, doc, writeBatch,
   onSnapshot, query, orderBy, limit, serverTimestamp
 } from 'firebase/firestore'
 import Sidebar from './components/Sidebar.jsx'
@@ -257,6 +257,15 @@ export default function App() {
     await deleteDoc(doc(db, 'todos', id))
   }, [])
 
+  const reorderTodos = useCallback(async (type, orderedIds) => {
+    if (!type || !Array.isArray(orderedIds) || orderedIds.length === 0) return
+    const batch = writeBatch(db)
+    orderedIds.forEach((id, index) => {
+      batch.update(doc(db, 'todos', id), { sortOrder: index + 1 })
+    })
+    await batch.commit()
+  }, [])
+
   if (loading) return <LoadingScreen />
   if (!user)   return <Login />
 
@@ -270,6 +279,7 @@ export default function App() {
     workspaceName, setWorkspaceName,
     messages: displayMessages, sendMessage,
     todos, addTodo, toggleTodo, editTodo, deleteTodo,
+    reorderTodos,
     aiModel, setAiModel, setSettingsOpen,
     userDisplayName: user?.displayName || '사용자',
     currentUser: user,

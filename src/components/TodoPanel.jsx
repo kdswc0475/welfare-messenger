@@ -124,14 +124,19 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
 }
 
 // ── To Do 항목 ────────────────────────────────────────────
-function TodoItem({ item, onToggle, onEdit, onDelete, onNotion }) {
+function TodoItem({ item, onToggle, onEdit, onDelete, onNotion, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const [hover, setHover] = useState(false)
 
   return (
     <div
       className="todo-item"
+      draggable={!item.done}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onDragStart={() => onDragStart?.(item)}
+      onDragOver={e => onDragOver?.(e, item)}
+      onDrop={e => onDrop?.(e, item)}
+      onDragEnd={() => onDragEnd?.()}
     >
       <div className={`todo-cb ${item.done ? 'checked' : ''}`} onClick={() => onToggle(item.id)}>
         {item.done && '✓'}
@@ -170,7 +175,7 @@ function TodoItem({ item, onToggle, onEdit, onDelete, onNotion }) {
 }
 
 // ── 메인 패널 ─────────────────────────────────────────────
-export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, deleteTodo, userDisplayName }) {
+export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, deleteTodo, userDisplayName, reorderTodos }) {
   const [collapsed, setCollapsed]     = useState(false)
   const [filter, setFilter]           = useState('all')
   const [modalOpen, setModalOpen]     = useState(false)
@@ -178,6 +183,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
   const [editingItem, setEditingItem] = useState(null)
   const [notionItem, setNotionItem]   = useState(null)
   const [memo, setMemo]               = useState('')
+  const [draggingTodo, setDraggingTodo] = useState(null)
 
   const openAdd  = (type = 'directive') => { setEditingItem(null); setModalType(type); setModalOpen(true) }
   const openEdit = (item)               => { setEditingItem(item); setModalType(item.type); setModalOpen(true) }
@@ -203,13 +209,28 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
     if (!res.ok) throw new Error(json.error || '저장 실패')
   }, [notionItem])
 
+  const sortTodos = (list) => [...list].sort((a, b) => {
+    const aOrder = Number.isFinite(Number(a.sortOrder)) ? Number(a.sortOrder) : Number.MAX_SAFE_INTEGER
+    const bOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : Number.MAX_SAFE_INTEGER
+    if (aOrder !== bOrder) return aOrder - bOrder
+
+    const aDue = a.due || '9999-12-31'
+    const bDue = b.due || '9999-12-31'
+    if (aDue !== bDue) return aDue.localeCompare(bDue)
+
+    const aTime = a.createdAt?.toMillis?.() || 0
+    const bTime = b.createdAt?.toMillis?.() || 0
+    return aTime - bTime
+  })
+
   const filtered = useMemo(() => {
+    const sorted = sortTodos(todos)
     switch (filter) {
-      case 'directive': return todos.filter(t => t.type === 'directive' && !t.done)
-      case 'personal':  return todos.filter(t => t.type === 'personal'  && !t.done)
-      case 'schedule':  return todos.filter(t => t.type === 'schedule'  && !t.done)
-      case 'done':      return todos.filter(t => t.done)
-      default:          return todos
+      case 'directive': return sorted.filter(t => t.type === 'directive' && !t.done)
+      case 'personal':  return sorted.filter(t => t.type === 'personal'  && !t.done)
+      case 'schedule':  return sorted.filter(t => t.type === 'schedule'  && !t.done)
+      case 'done':      return sorted.filter(t => t.done)
+      default:          return sorted
     }
   }, [todos, filter])
 
@@ -243,6 +264,30 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
       onEdit={openEdit}
       onDelete={handleDelete}
       onNotion={setNotionItem}
+      onDragStart={(item) => setDraggingTodo(item)}
+      onDragOver={(e, item) => {
+        if (!draggingTodo || draggingTodo.done) return
+        if (draggingTodo.type !== item.type || item.done) return
+        e.preventDefault()
+      }}
+      onDrop={async (e, targetItem) => {
+        e.preventDefault()
+        if (!draggingTodo || draggingTodo.id === targetItem.id) return
+        if (draggingTodo.type !== targetItem.type || targetItem.done) return
+
+        const typeTodos = filtered.filter(t => t.type === targetItem.type && !t.done)
+        const ids = typeTodos.map(t => t.id)
+        const from = ids.indexOf(draggingTodo.id)
+        const to = ids.indexOf(targetItem.id)
+        if (from < 0 || to < 0 || from === to) return
+
+        const next = [...ids]
+        const [moved] = next.splice(from, 1)
+        next.splice(to, 0, moved)
+        await reorderTodos?.(targetItem.type, next)
+        setDraggingTodo(null)
+      }}
+      onDragEnd={() => setDraggingTodo(null)}
     />
   )
 
