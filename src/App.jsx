@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
-  collection, addDoc, updateDoc, deleteDoc, doc, writeBatch,
+  collection, addDoc, updateDoc, deleteDoc, doc, writeBatch, setDoc, arrayUnion,
   onSnapshot, query, orderBy, limit, serverTimestamp
 } from 'firebase/firestore'
 import Sidebar from './components/Sidebar.jsx'
@@ -74,6 +74,53 @@ export default function App() {
     if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(p => { notifAllowed.current = p === 'granted' })
     }
+  }, [user])
+
+  // ── FCM 토큰 등록 (앱 종료 상태 푸시 수신용) ─────────────────
+  useEffect(() => {
+    if (!user) return
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) return
+
+    let cancelled = false
+    const setupFcm = async () => {
+      try {
+        const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
+        if (!vapidKey) {
+          console.warn('VITE_FIREBASE_VAPID_KEY 미설정: 백그라운드 푸시 비활성화')
+          return
+        }
+
+        const { isSupported, getMessaging, getToken } = await import('firebase/messaging')
+        const supported = await isSupported()
+        if (!supported || cancelled) return
+
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+
+        let permission = Notification.permission
+        if (permission === 'default') permission = await Notification.requestPermission()
+        if (permission !== 'granted' || cancelled) return
+
+        const { app } = await import('./firebase.js')
+        const messaging = getMessaging(app)
+        const token = await getToken(messaging, {
+          vapidKey,
+          serviceWorkerRegistration: swReg,
+        })
+        if (!token || cancelled) return
+
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          fcmTokens: arrayUnion(token),
+          pushEnabled: true,
+          lastPushTokenAt: serverTimestamp(),
+        }, { merge: true })
+      } catch (err) {
+        console.warn('FCM 초기화 실패:', err)
+      }
+    }
+
+    setupFcm()
+    return () => { cancelled = true }
   }, [user])
 
   // ── 탭 포커스 시 읽지 않은 수 초기화 ─────────────────────
@@ -193,6 +240,20 @@ export default function App() {
       ...fileData,
     }
     await addDoc(collection(db, 'messages'), msgData)
+
+    // 백그라운드 푸시 발송 (실패해도 메시지 전송은 유지)
+    fetch('/api/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderUid: user?.uid || '',
+        author: displayName,
+        text: text || '',
+        fileName: file?.name || '',
+      }),
+    }).catch((err) => {
+      console.warn('push API 호출 실패:', err)
+    })
 
     // AI 응답 — 멘션으로 지정된 모델 또는 기본 모델 사용
     const targetModel = detectMentionedModel(text, aiModel)

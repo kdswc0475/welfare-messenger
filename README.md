@@ -21,6 +21,17 @@
 npm install
 ```
 
+### 2-1. 푸시 알림 환경변수 (FCM)
+- 프론트엔드(`.env`)
+```bash
+VITE_FIREBASE_VAPID_KEY=YOUR_FIREBASE_WEB_PUSH_CERTIFICATE_KEY_PAIR
+```
+- 서버 배포 환경(Vercel Project Settings → Environment Variables)
+```bash
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+```
+`FIREBASE_SERVICE_ACCOUNT_JSON`에는 Firebase 서비스 계정 JSON 전체를 1줄 문자열로 넣어야 합니다.
+
 ### 3. 개발 서버 실행
 ```bash
 npm run dev
