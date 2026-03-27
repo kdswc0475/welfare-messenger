@@ -30,7 +30,7 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
       setDue(editItem.due || '')
       setPriority(editItem.urgent ? '긴급' : '보통')
     } else {
-      setType(defaultType === 'personal' ? 'personal' : 'directive')
+      setType(['directive', 'personal', 'schedule'].includes(defaultType) ? defaultType : 'directive')
       setText('')
       setAssignee(userDisplayName)
       setDue('')
@@ -54,23 +54,24 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
 
         <div className="type-toggle">
           <button className={`type-btn ${type === 'directive' ? 'active' : ''}`} onClick={() => setType('directive')}>업무지시</button>
-          <button className={`type-btn ${type === 'personal'  ? 'active' : ''}`} onClick={() => { setType('personal'); setAssignee(userDisplayName) }}>개별업무</button>
+          <button className={`type-btn ${type === 'personal'  ? 'active' : ''}`} onClick={() => { setType('personal'); setAssignee(userDisplayName) }}>요청사항</button>
+          <button className={`type-btn ${type === 'schedule' ? 'active' : ''}`} onClick={() => setType('schedule')}>일정</button>
         </div>
 
         <div className="form-group">
-          <label className="form-label">업무 내용</label>
+          <label className="form-label">{type === 'schedule' ? '내용' : '업무 내용'}</label>
           <input
             className="form-input"
             value={text}
             onChange={e => setText(e.target.value)}
-            placeholder="업무 내용 입력"
+            placeholder={type === 'schedule' ? '일정 내용 입력' : '업무 내용 입력'}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             autoFocus
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">담당자</label>
+          <label className="form-label">{type === 'schedule' ? '이름' : '담당자'}</label>
           {type === 'personal' ? (
             members.length > 0 ? (
               <select className="form-input" value={assignee} onChange={e => setAssignee(e.target.value)}>
@@ -100,15 +101,17 @@ function TodoModal({ onClose, onAdd, onEdit, open, defaultType, userDisplayName,
 
         <div className="form-row">
           <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">마감일</label>
+            <label className="form-label">{type === 'schedule' ? '일자' : '마감일'}</label>
             <input className="form-input" type="date" value={due} onChange={e => setDue(e.target.value)} />
           </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">우선순위</label>
-            <select className="form-input" value={priority} onChange={e => setPriority(e.target.value)}>
-              <option>보통</option><option>긴급</option><option>낮음</option>
-            </select>
-          </div>
+          {type !== 'schedule' && (
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">우선순위</label>
+              <select className="form-input" value={priority} onChange={e => setPriority(e.target.value)}>
+                <option>보통</option><option>긴급</option><option>낮음</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="modal-actions">
@@ -141,7 +144,7 @@ function TodoItem({ item, onToggle, onEdit, onDelete, onNotion }) {
           {item.due && <span style={{ color: item.urgent && !item.done ? '#A32D2D' : 'inherit' }}>{item.due}</span>}
         </div>
         {item.urgent && !item.done && <span className="tag urgent">긴급</span>}
-        {!item.urgent && <span className="tag">{item.type === 'directive' ? '지시' : '개인'}</span>}
+        {!item.urgent && <span className="tag">{item.type === 'directive' ? '지시' : item.type === 'personal' ? '요청' : '일정'}</span>}
       </div>
 
       {/* 호버 시 노션/수정/삭제 버튼 */}
@@ -204,6 +207,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
     switch (filter) {
       case 'directive': return todos.filter(t => t.type === 'directive' && !t.done)
       case 'personal':  return todos.filter(t => t.type === 'personal'  && !t.done)
+      case 'schedule':  return todos.filter(t => t.type === 'schedule'  && !t.done)
       case 'done':      return todos.filter(t => t.done)
       default:          return todos
     }
@@ -249,6 +253,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
           {!collapsed && <span className="todo-title">To Do 현황판</span>}
           {!collapsed && <button className="add-btn" onClick={() => openAdd('directive')}>+ 업무지시</button>}
           {!collapsed && <button className="add-btn" onClick={() => openAdd('personal')}>+ 요청사항</button>}
+          {!collapsed && <button className="add-btn" onClick={() => openAdd('schedule')}>+ 일정</button>}
           <button className="icon-sm toggle-btn" onClick={() => setCollapsed(v => !v)}>
             {collapsed ? '◀' : '▶'}
           </button>
@@ -257,7 +262,7 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
         {!collapsed && (
           <>
             <div className="todo-tabs">
-              {[['all','전체'],['directive','업무지시'],['personal','요청사항'],['done','완료']].map(([v,l]) => (
+              {[['all','전체'],['directive','업무지시'],['personal','요청사항'],['schedule','일정'],['done','완료']].map(([v,l]) => (
                 <button key={v} className={`todo-tab ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
               ))}
             </div>
@@ -288,6 +293,16 @@ export default function TodoPanel({ todos, addTodo, toggleTodo, editTodo, delete
                     <button className="plus-btn" onClick={() => openAdd('personal')}>＋</button>
                   </div>
                   {filtered.filter(t => t.type === 'personal').map(renderItem)}
+                </>
+              )}
+
+              {(filter === 'all' || filter === 'schedule') && (
+                <>
+                  <div className="section-hd">
+                    <span className="section-lbl">일정</span>
+                    <button className="plus-btn" onClick={() => openAdd('schedule')}>＋</button>
+                  </div>
+                  {filtered.filter(t => t.type === 'schedule').map(renderItem)}
                 </>
               )}
 
