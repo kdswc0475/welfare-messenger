@@ -6,10 +6,9 @@ import './SettingsModal.css'
 
 const PAGES = ['일반', '멤버 관리', 'AI 비서', '알림', '보안', '연동', '레이아웃']
 
-function Toggle({ defaultOn = true }) {
-  const [on, setOn] = useState(defaultOn)
+function Toggle({ on = true, onToggle }) {
   return (
-    <button className={`toggle ${on ? 'on' : 'off'}`} onClick={() => setOn(v => !v)} />
+    <button className={`toggle ${on ? 'on' : 'off'}`} onClick={() => onToggle?.(!on)} />
   )
 }
 
@@ -28,15 +27,15 @@ function GeneralPage({ workspaceName, setWorkspaceName }) {
       </div>
       <div className="setting-row">
         <div><div className="setting-label">To Do 완료 알림</div><div className="setting-sub">완료 시 채널에 자동 메시지</div></div>
-        <Toggle defaultOn={true} />
+        <Toggle on={true} />
       </div>
       <div className="setting-row">
         <div><div className="setting-label">마감 D-1 자동 알림</div></div>
-        <Toggle defaultOn={true} />
+        <Toggle on={true} />
       </div>
       <div className="setting-row">
         <div><div className="setting-label">주간 보고서 자동 생성</div></div>
-        <Toggle defaultOn={false} />
+        <Toggle on={false} />
       </div>
       <button className="save-btn" onClick={() => setWorkspaceName(name)}>변경사항 저장</button>
     </div>
@@ -181,14 +180,31 @@ function AIPage({ aiModel, setAiModel }) {
   )
 }
 
-function NotifyPage() {
+function NotifyPage({ notifySettings, setNotifySettings }) {
+  const [savedMsg, setSavedMsg] = useState('')
+
+  const update = (key, value) => {
+    setSavedMsg('')
+    setNotifySettings(prev => ({ ...prev, [key]: value }))
+  }
+
   return (
     <div>
       <div className="settings-title">알림 설정</div>
-      <div className="setting-row"><div><div className="setting-label">멘션 알림</div></div><Toggle defaultOn={true} /></div>
-      <div className="setting-row"><div><div className="setting-label">일반 메시지 알림</div></div><Toggle defaultOn={false} /></div>
-      <div className="setting-row"><div><div className="setting-label">집중 모드</div><div className="setting-sub">21:00 ~ 08:00 알림 차단</div></div><Toggle defaultOn={false} /></div>
-      <button className="save-btn">저장</button>
+      <div className="setting-row">
+        <div><div className="setting-label">멘션 알림</div></div>
+        <Toggle on={notifySettings.mention} onToggle={v => update('mention', v)} />
+      </div>
+      <div className="setting-row">
+        <div><div className="setting-label">일반 메시지 알림</div></div>
+        <Toggle on={notifySettings.general} onToggle={v => update('general', v)} />
+      </div>
+      <div className="setting-row">
+        <div><div className="setting-label">집중 모드</div><div className="setting-sub">21:00 ~ 08:00 알림 차단</div></div>
+        <Toggle on={notifySettings.focusMode} onToggle={v => update('focusMode', v)} />
+      </div>
+      <button className="save-btn" onClick={() => setSavedMsg('저장되었습니다.')}>저장</button>
+      {savedMsg && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>{savedMsg}</div>}
     </div>
   )
 }
@@ -197,9 +213,9 @@ function SecurityPage() {
   return (
     <div>
       <div className="settings-title">보안</div>
-      <div className="setting-row"><div><div className="setting-label">세션 자동 만료</div><div className="setting-sub">비활성 30분 후 로그아웃</div></div><Toggle defaultOn={true} /></div>
-      <div className="setting-row"><div><div className="setting-label">종단간 암호화</div></div><Toggle defaultOn={true} /></div>
-      <div className="setting-row"><div><div className="setting-label">관리자 DM 열람 차단</div></div><Toggle defaultOn={true} /></div>
+      <div className="setting-row"><div><div className="setting-label">세션 자동 만료</div><div className="setting-sub">비활성 30분 후 로그아웃</div></div><Toggle on={true} /></div>
+      <div className="setting-row"><div><div className="setting-label">종단간 암호화</div></div><Toggle on={true} /></div>
+      <div className="setting-row"><div><div className="setting-label">관리자 DM 열람 차단</div></div><Toggle on={true} /></div>
     </div>
   )
 }
@@ -208,9 +224,9 @@ function IntegrationPage() {
   return (
     <div>
       <div className="settings-title">연동 설정</div>
-      <div className="setting-row"><div><div className="setting-label">Google 스프레드시트</div><div className="setting-sub">To Do 완료 시 자동 기록</div></div><Toggle defaultOn={false} /></div>
-      <div className="setting-row"><div><div className="setting-label">Google 캘린더</div></div><Toggle defaultOn={false} /></div>
-      <div className="setting-row"><div><div className="setting-label">자동 백업</div><div className="setting-sub">매일 00:00</div></div><Toggle defaultOn={true} /></div>
+      <div className="setting-row"><div><div className="setting-label">Google 스프레드시트</div><div className="setting-sub">To Do 완료 시 자동 기록</div></div><Toggle on={false} /></div>
+      <div className="setting-row"><div><div className="setting-label">Google 캘린더</div></div><Toggle on={false} /></div>
+      <div className="setting-row"><div><div className="setting-label">자동 백업</div><div className="setting-sub">매일 00:00</div></div><Toggle on={true} /></div>
       <button className="save-btn">저장</button>
     </div>
   )
@@ -232,7 +248,7 @@ function LayoutPage() {
           <input type="number" defaultValue={260} className="setting-input" style={{ width: 70 }} /> px
         </div>
       </div>
-      <div className="setting-row"><div><div className="setting-label">레이아웃 자동 저장</div></div><Toggle defaultOn={true} /></div>
+      <div className="setting-row"><div><div className="setting-label">레이아웃 자동 저장</div></div><Toggle on={true} /></div>
       <button className="save-btn">저장</button>
     </div>
   )
@@ -240,13 +256,45 @@ function LayoutPage() {
 
 export default function SettingsModal({ workspaceName, setWorkspaceName, aiModel, setAiModel, onClose }) {
   const [page, setPage] = useState('일반')
+  const { user } = useAuth()
+  const notifyStorageKey = user?.uid ? `welfare-messenger:notify:${user.uid}` : 'welfare-messenger:notify:guest'
+  const [notifySettings, setNotifySettings] = useState(() => {
+    try {
+      const raw = localStorage.getItem('welfare-messenger:notify:guest')
+      if (!raw) return { mention: true, general: false, focusMode: false }
+      return { mention: true, general: false, focusMode: false, ...JSON.parse(raw) }
+    } catch {
+      return { mention: true, general: false, focusMode: false }
+    }
+  })
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(notifyStorageKey)
+      if (!raw) {
+        setNotifySettings({ mention: true, general: false, focusMode: false })
+        return
+      }
+      setNotifySettings({ mention: true, general: false, focusMode: false, ...JSON.parse(raw) })
+    } catch {
+      setNotifySettings({ mention: true, general: false, focusMode: false })
+    }
+  }, [notifyStorageKey])
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(notifyStorageKey, JSON.stringify(notifySettings))
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, [notifyStorageKey, notifySettings])
 
   const PageContent = () => {
     switch (page) {
       case '일반':     return <GeneralPage workspaceName={workspaceName} setWorkspaceName={setWorkspaceName} />
       case '멤버 관리': return <MembersPage />
       case 'AI 비서':  return <AIPage aiModel={aiModel} setAiModel={setAiModel} />
-      case '알림':     return <NotifyPage />
+      case '알림':     return <NotifyPage notifySettings={notifySettings} setNotifySettings={setNotifySettings} />
       case '보안':     return <SecurityPage />
       case '연동':     return <IntegrationPage />
       case '레이아웃': return <LayoutPage />
