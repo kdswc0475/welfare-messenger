@@ -307,7 +307,7 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
       if (e.key === 'Enter')     { e.preventDefault(); selectMention(popup.filtered[popup.activeIdx]); return }
       if (e.key === 'Escape')    { setPopup(p => ({ ...p, show: false })); return }
     }
-    if (e.key === 'Enter') handleSend()
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
   const handleFileChange = (e) => {
