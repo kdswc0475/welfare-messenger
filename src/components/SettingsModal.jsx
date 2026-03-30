@@ -180,31 +180,84 @@ function AIPage({ aiModel, setAiModel }) {
   )
 }
 
-function NotifyPage({ notifySettings, setNotifySettings }) {
-  const [savedMsg, setSavedMsg] = useState('')
+function NotifyPage({ notifySettings, setNotifySettings, pushStatus }) {
+  const [permission, setPermission] = React.useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  )
 
-  const update = (key, value) => {
-    setSavedMsg('')
-    setNotifySettings(prev => ({ ...prev, [key]: value }))
+  const update = (key, value) => setNotifySettings(prev => ({ ...prev, [key]: value }))
+
+  const requestPermission = async () => {
+    if (!('Notification' in window)) return
+    const result = await Notification.requestPermission()
+    setPermission(result)
+    if (result === 'granted') {
+      new Notification('복지 메신저', {
+        body: '알림이 활성화되었습니다.',
+        icon: '/icon-192.png',
+      })
+    }
   }
+
+  const permissionLabel = { granted: '허용됨', denied: '차단됨', default: '미설정', unsupported: '미지원' }
+  const permissionColor = { granted: '#16a34a', denied: '#dc2626', default: '#d97706', unsupported: '#6b7280' }
 
   return (
     <div>
       <div className="settings-title">알림 설정</div>
+
+      {/* 브라우저 알림 권한 상태 */}
+      <div className="setting-row" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 6 }}>
+        <div className="setting-label">브라우저 알림 권한</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600,
+            color: permissionColor[permission] || '#6b7280',
+            background: `${permissionColor[permission]}18`,
+            padding: '2px 8px', borderRadius: 4,
+          }}>
+            {permissionLabel[permission] || permission}
+          </span>
+          {permission !== 'granted' && permission !== 'denied' && permission !== 'unsupported' && (
+            <button className="save-btn" style={{ margin: 0, padding: '4px 12px', fontSize: 12 }} onClick={requestPermission}>
+              권한 요청
+            </button>
+          )}
+          {permission === 'denied' && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              브라우저 설정에서 직접 허용해야 합니다
+            </span>
+          )}
+          {permission === 'default' && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              권한을 허용해야 알림을 받을 수 있습니다
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="setting-row">
-        <div><div className="setting-label">멘션 알림</div></div>
+        <div><div className="setting-label">멘션 알림</div><div className="setting-sub">@이름 멘션 시 알림</div></div>
         <Toggle on={notifySettings.mention} onToggle={v => update('mention', v)} />
       </div>
       <div className="setting-row">
-        <div><div className="setting-label">일반 메시지 알림</div></div>
+        <div><div className="setting-label">일반 메시지 알림</div><div className="setting-sub">모든 새 메시지 알림</div></div>
         <Toggle on={notifySettings.general} onToggle={v => update('general', v)} />
       </div>
       <div className="setting-row">
         <div><div className="setting-label">집중 모드</div><div className="setting-sub">21:00 ~ 08:00 알림 차단</div></div>
         <Toggle on={notifySettings.focusMode} onToggle={v => update('focusMode', v)} />
       </div>
-      <button className="save-btn" onClick={() => setSavedMsg('저장되었습니다.')}>저장</button>
-      {savedMsg && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>{savedMsg}</div>}
+      <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-md)', fontSize: 12, color: 'var(--text-muted)' }}>
+        알림 설정은 자동 저장됩니다. 브라우저가 닫혀 있을 때도 알림을 받으려면 권한이 허용되어 있어야 합니다.
+      </div>
+      <div style={{ marginTop: 8, padding: '10px 12px', background: 'var(--panel-bg)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: 12 }}>
+        <div style={{ marginBottom: 4, color: 'var(--text-primary)', fontWeight: 500 }}>푸시 연결 상태</div>
+        <div style={{ color: 'var(--text-secondary)' }}>
+          {pushStatus?.supported === false ? '브라우저 미지원' : (pushStatus?.tokenRegistered ? '정상 연결됨' : '토큰 미등록')}
+          {pushStatus?.lastError ? ` · ${pushStatus.lastError}` : ''}
+        </div>
+      </div>
     </div>
   )
 }
@@ -254,47 +307,15 @@ function LayoutPage() {
   )
 }
 
-export default function SettingsModal({ workspaceName, setWorkspaceName, aiModel, setAiModel, onClose }) {
+export default function SettingsModal({ workspaceName, setWorkspaceName, aiModel, setAiModel, notifySettings, setNotifySettings, pushStatus, onClose }) {
   const [page, setPage] = useState('일반')
-  const { user } = useAuth()
-  const notifyStorageKey = user?.uid ? `welfare-messenger:notify:${user.uid}` : 'welfare-messenger:notify:guest'
-  const [notifySettings, setNotifySettings] = useState(() => {
-    try {
-      const raw = localStorage.getItem('welfare-messenger:notify:guest')
-      if (!raw) return { mention: true, general: false, focusMode: false }
-      return { mention: true, general: false, focusMode: false, ...JSON.parse(raw) }
-    } catch {
-      return { mention: true, general: false, focusMode: false }
-    }
-  })
-
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem(notifyStorageKey)
-      if (!raw) {
-        setNotifySettings({ mention: true, general: false, focusMode: false })
-        return
-      }
-      setNotifySettings({ mention: true, general: false, focusMode: false, ...JSON.parse(raw) })
-    } catch {
-      setNotifySettings({ mention: true, general: false, focusMode: false })
-    }
-  }, [notifyStorageKey])
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(notifyStorageKey, JSON.stringify(notifySettings))
-    } catch {
-      // ignore localStorage write errors
-    }
-  }, [notifyStorageKey, notifySettings])
 
   const PageContent = () => {
     switch (page) {
       case '일반':     return <GeneralPage workspaceName={workspaceName} setWorkspaceName={setWorkspaceName} />
       case '멤버 관리': return <MembersPage />
       case 'AI 비서':  return <AIPage aiModel={aiModel} setAiModel={setAiModel} />
-      case '알림':     return <NotifyPage notifySettings={notifySettings} setNotifySettings={setNotifySettings} />
+      case '알림':     return <NotifyPage notifySettings={notifySettings} setNotifySettings={setNotifySettings} pushStatus={pushStatus} />
       case '보안':     return <SecurityPage />
       case '연동':     return <IntegrationPage />
       case '레이아웃': return <LayoutPage />

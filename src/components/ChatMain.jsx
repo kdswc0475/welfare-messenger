@@ -255,6 +255,8 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
     const val    = e.target.value
     const cursor = e.target.selectionStart
     setInput(val)
+    e.target.style.height = 'auto'
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
 
     const before = val.slice(0, cursor)
     const atIdx  = before.lastIndexOf('@')
@@ -295,6 +297,7 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
     if (!input.trim() && !pendingFile) return
     sendMessage(input.trim(), pendingFile, replyTo)
     setInput('')
+    if (inputRef.current) inputRef.current.style.height = '34px'
     setPendingFile(null)
     setReplyTo(null)
     setPopup(p => ({ ...p, show: false }))
@@ -418,12 +421,13 @@ export default function ChatMain({ messages, sendMessage, aiModel, currentUser, 
             onChange={handleFileChange}
           />
           <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="파일 첨부">📎</button>
-          <input
+          <textarea
             ref={inputRef}
             className="msg-input"
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            rows={1}
             placeholder={pendingFile ? `${pendingFile.name} 첨부됨 — 메시지 추가 (선택)` : '메시지 입력... (@로 AI 모델 선택)'}
           />
           <button className="send-btn" onClick={handleSend}>▶</button>

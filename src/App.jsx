@@ -68,6 +68,13 @@ export default function App() {
   const [settingsOpen, setSettingsOpen]   = useState(false)
   const [unread, setUnread]               = useState(0)
   const [selectedChannel, setSelectedChannel] = useState('notice')
+  const [channelUnread, setChannelUnread] = useState({ notice: 0, daily: 0 })
+  const [pushStatus, setPushStatus] = useState({
+    supported: true,
+    permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
+    tokenRegistered: false,
+    lastError: '',
+  })
 
   // ── 알림 설정 (SettingsModal과 공유) ──────────────────────
   const notifyStorageKey = user?.uid ? `welfare-messenger:notify:${user.uid}` : null
@@ -112,13 +119,20 @@ export default function App() {
 
         const { isSupported, getMessaging, getToken } = await import('firebase/messaging')
         const supported = await isSupported()
-        if (!supported || cancelled) return
+        if (!supported || cancelled) {
+          setPushStatus(prev => ({ ...prev, supported: false, lastError: '이 브라우저는 FCM을 지원하지 않습니다.' }))
+          return
+        }
 
         const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
 
         let permission = Notification.permission
         if (permission === 'default') permission = await Notification.requestPermission()
-        if (permission !== 'granted' || cancelled) return
+        setPushStatus(prev => ({ ...prev, permission }))
+        if (permission !== 'granted' || cancelled) {
+          setPushStatus(prev => ({ ...prev, tokenRegistered: false, lastError: '알림 권한이 허용되지 않았습니다.' }))
+          return
+        }
 
         const { app } = await import('./firebase.js')
         const messaging = getMessaging(app)
@@ -126,7 +140,10 @@ export default function App() {
           vapidKey,
           serviceWorkerRegistration: swReg,
         })
-        if (!token || cancelled) return
+        if (!token || cancelled) {
+          setPushStatus(prev => ({ ...prev, tokenRegistered: false, lastError: '토큰 발급에 실패했습니다.' }))
+          return
+        }
 
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
@@ -141,14 +158,20 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: user.uid, token }),
         }).catch(() => {})
+        setPushStatus(prev => ({ ...prev, tokenRegistered: true, lastError: '' }))
       } catch (err) {
         console.warn('FCM 초기화 실패:', err)
+        setPushStatus(prev => ({ ...prev, tokenRegistered: false, lastError: err?.message || 'FCM 초기화 실패' }))
       }
     }
 
     setupFcm()
     return () => { cancelled = true }
   }, [user])
+
+  useEffect(() => {
+    setChannelUnread(prev => ({ ...prev, [selectedChannel]: 0 }))
+  }, [selectedChannel])
 
   // ── 탭 포커스 시 읽지 않은 수 초기화 ─────────────────────
   useEffect(() => {
@@ -215,6 +238,12 @@ export default function App() {
         newMsgs.forEach(msg => {
           // 본인 메시지·AI 메시지는 알림 제외
           if (msg.uid === user.uid || msg.type === 'ai') return
+          const msgChannel = msg.channel || 'notice'
+
+          // 현재 보고 있지 않은 채널의 읽지 않음 수 누적
+          if (msgChannel !== selectedChannel) {
+            setChannelUnread(prev => ({ ...prev, [msgChannel]: (prev[msgChannel] || 0) + 1 }))
+          }
 
           // 탭이 숨겨진 경우에만 unread 증가 + OS 알림
           if (!document.hidden) return
@@ -250,7 +279,7 @@ export default function App() {
       setMessages(msgs)
     })
     return unsubscribe
-  }, [user])
+  }, [user, selectedChannel])
 
   const channelOptions = [
     { id: 'notice', label: '공지사항', icon: '🔒' },
@@ -418,6 +447,8 @@ export default function App() {
     reorderTodos,
     aiModel, setAiModel, setSettingsOpen,
     selectedChannel, setSelectedChannel, channelOptions,
+    channelUnread,
+    pushStatus,
     userDisplayName: user?.displayName || '사용자',
     currentUser: user,
     onDeleteMessage: deleteMessage,
@@ -447,6 +478,7 @@ export default function App() {
           setAiModel={setAiModel}
           notifySettings={notifySettings}
           setNotifySettings={setNotifySettings}
+          pushStatus={pushStatus}
           onClose={() => setSettingsOpen(false)}
         />
       )}

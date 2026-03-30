@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { db } from '../firebase.js'
 import './Sidebar.css'
 
-export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen, selectedChannel, setSelectedChannel, channelOptions }) {
+export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOpen, selectedChannel, setSelectedChannel, channelOptions, channelUnread }) {
   const { user, logout }          = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
@@ -68,6 +68,7 @@ export default function Sidebar({ workspaceName, setWorkspaceName, setSettingsOp
             >
               <span className="ch-icon">{ch.icon}</span>
               {!collapsed && <span className="ch-name">{ch.label}</span>}
+              {!collapsed && (channelUnread?.[ch.id] > 0) && <span className="badge">{channelUnread[ch.id]}</span>}
             </div>
           ))}
         </section>

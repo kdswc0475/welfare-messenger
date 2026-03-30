@@ -146,6 +146,10 @@
   background: var(--sidebar-bg);
   color: var(--text-primary);
   outline: none;
+  resize: none;
+  min-height: 34px;
+  max-height: 120px;
+  line-height: 1.4;
 }
 .msg-input:focus { border-color: var(--accent); }
 .send-btn {
